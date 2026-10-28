@@ -4,6 +4,8 @@ System cleaner, monitor, and maintenance tool for **Ubuntu Desktop 24.04** (GNOM
 
 UbuClean is built around a **scan → preview → confirm → execute** flow. The GUI never runs as root; system operations are isolated in a CLI helper invoked through `pkexec` that only accepts whitelisted actions.
 
+![UbuClean interface](images/screenshot.png)
+
 ---
 
 ## Features
