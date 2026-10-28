@@ -1,4 +1,4 @@
-"""Kelas dasar dan utilitas untuk semua cleaner."""
+"""Base class and utilities for all cleaners."""
 
 from __future__ import annotations
 
@@ -14,23 +14,23 @@ from ubuclean.core.runner import CommandResult, PrivilegedError
 
 
 class CommandFailed(RuntimeError):
-    """Perintah sistem mengembalikan kode gagal saat scan."""
+    """A system command returned a failure code during scan."""
 
 
 class BaseCleaner(ABC):
-    """Kontrak cleaner: scan harus murni-baca, clean hanya dari preview."""
+    """Cleaner contract: scan must be read-only, clean only acts on a preview."""
 
     category: Category
 
     @abstractmethod
     def scan(self, ctx: Context) -> Preview:
-        """Pindai kategori dan kembalikan preview tanpa mengubah sistem."""
+        """Scan the category and return a preview without changing the system."""
 
     @abstractmethod
     def clean(self, ctx: Context, preview: Preview) -> CleanOutcome:
-        """Bersihkan item dari preview yang sudah dikonfirmasi."""
+        """Clean the items from a preview that has been confirmed."""
 
-    # -- utilitas umum -------------------------------------------------
+    # -- common utilities ----------------------------------------------
     def new_preview(
         self,
         *,
@@ -41,7 +41,7 @@ class BaseCleaner(ABC):
         supported: bool = True,
         estimated_bytes: int | None = None,
     ) -> Preview:
-        """Bangun preview dengan metadata kategori ini."""
+        """Build a preview with this category's metadata."""
         return Preview(
             category_id=self.category.id,
             items=list(items),
@@ -53,7 +53,7 @@ class BaseCleaner(ABC):
         )
 
     def item(self, path: Path, *, label: str | None = None, detail: str = "") -> PreviewItem:
-        """Buat item preview dari sebuah path."""
+        """Create a preview item from a path."""
         return PreviewItem(
             id=str(path),
             label=label or str(path),
@@ -69,7 +69,7 @@ class BaseCleaner(ABC):
         *,
         direct: bool = False,
     ) -> CleanOutcome:
-        """Hapus/karantina path sesuai pengaturan kategori."""
+        """Delete/quarantine paths according to the category settings."""
         outcome = CleanOutcome(category_id=self.category.id)
         candidates = [Path(path) for path in paths]
         if not candidates:
@@ -77,13 +77,13 @@ class BaseCleaner(ABC):
         if ctx.dry_run:
             outcome.freed_bytes = sum(path_size(path) for path in candidates)
             outcome.removed = len(candidates)
-            outcome.detail = "Pratinjau: tidak ada yang dihapus."
+            outcome.detail = "Preview: nothing was deleted."
             return outcome
         if self.category.quarantine and not direct:
             entry = ctx.quarantine.quarantine(self.category.id, candidates)
             if entry is None:
                 outcome.failed = len(candidates)
-                outcome.errors.append("Tidak ada item yang berhasil dikarantina.")
+                outcome.errors.append("No items were quarantined successfully.")
                 return outcome
             outcome.quarantined = len(entry.items)
             outcome.quarantined_bytes = entry.total_bytes
@@ -108,7 +108,7 @@ class BaseCleaner(ABC):
         *,
         timeout: float = 300.0,
     ) -> CommandResult:
-        """Jalankan aksi helper dan lempar ``PrivilegedError`` bila gagal."""
+        """Run a helper action and raise ``PrivilegedError`` on failure."""
         return ctx.privileged.run(list(args), timeout=timeout)
 
     def helper_json(
@@ -118,7 +118,7 @@ class BaseCleaner(ABC):
         *,
         timeout: float = 300.0,
     ) -> dict[str, object]:
-        """Jalankan helper dan parse JSON hasilnya (toleran terhadap output kosong)."""
+        """Run the helper and parse its JSON output (tolerant of empty output)."""
         result = self.run_helper(ctx, args, timeout=timeout)
         for line in reversed(result.stdout.splitlines()):
             line = line.strip()
@@ -139,7 +139,7 @@ class BaseCleaner(ABC):
         *,
         timeout: float = 300.0,
     ) -> CleanOutcome:
-        """Jalankan aksi helper dan ubah hasilnya menjadi outcome kategori."""
+        """Run a helper action and turn its result into a category outcome."""
         try:
             payload = self.helper_json(ctx, args, timeout=timeout)
         except PrivilegedError as exc:
@@ -148,13 +148,13 @@ class BaseCleaner(ABC):
             return CleanOutcome(
                 category_id=self.category.id,
                 failed=1,
-                errors=["Helper tidak mengembalikan hasil yang bisa dibaca."],
+                errors=["The helper did not return readable output."],
             )
         return helper_outcome(self.category, payload)
 
     @staticmethod
     def failure(error: Exception | str) -> CleanOutcome:
-        """Bangun outcome gagal dari exception/pesan."""
+        """Build a failed outcome from an exception/message."""
         return CleanOutcome(
             category_id="",
             failed=1,
@@ -163,7 +163,7 @@ class BaseCleaner(ABC):
 
 
 def command_output(ctx: Context, argv: list[str], *, timeout: float = 30.0) -> str:
-    """Jalankan perintah read-only dan kembalikan stdout, error → string kosong."""
+    """Run a read-only command and return stdout; on error → empty string."""
     result = ctx.runner.run(argv, timeout=timeout)
     if result.returncode != 0:
         return ""
@@ -171,10 +171,10 @@ def command_output(ctx: Context, argv: list[str], *, timeout: float = 30.0) -> s
 
 
 def command_or_error(ctx: Context, argv: list[str], *, timeout: float = 30.0) -> str:
-    """Jalankan perintah read-only; lempar ``CommandFailed`` dengan stderr."""
+    """Run a read-only command; raise ``CommandFailed`` with stderr."""
     result = ctx.runner.run(argv, timeout=timeout)
     if result.returncode != 0:
-        message = result.stderr.strip() or f"{argv[0]} gagal ({result.returncode})"
+        message = result.stderr.strip() or f"{argv[0]} failed ({result.returncode})"
         raise CommandFailed(message)
     return result.stdout
 
@@ -185,7 +185,7 @@ def helper_outcome(
     *,
     errors: Iterable[str] = (),
 ) -> CleanOutcome:
-    """Ubah JSON helper menjadi :class:`CleanOutcome`."""
+    """Convert helper JSON into :class:`CleanOutcome`."""
     error_list = [str(err) for err in errors]
     helper_errors = payload.get("errors", [])
     if isinstance(helper_errors, list):

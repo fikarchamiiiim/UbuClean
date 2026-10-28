@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Pemasang UbuClean untuk Ubuntu Desktop 24.04.
+# UbuClean installer for Ubuntu Desktop 24.04.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
@@ -8,11 +8,11 @@ INSTALL_DEPS=1
 
 usage() {
   cat <<'EOF'
-Penggunaan: sudo ./install.sh [--dry-run] [--no-deps]
+Usage: sudo ./install.sh [--dry-run] [--no-deps]
 
-  --dry-run   Tampilkan langkah tanpa mengubah sistem.
-  --no-deps   Jangan pasang paket apt (asumsikan dependensi sudah ada).
-  -h, --help  Tampilkan bantuan ini.
+  --dry-run   Show the steps without changing the system.
+  --no-deps   Do not install apt packages (assume dependencies are present).
+  -h, --help  Show this help.
 EOF
 }
 
@@ -21,12 +21,12 @@ for arg in "$@"; do
     --dry-run) DRY_RUN=1 ;;
     --no-deps) INSTALL_DEPS=0 ;;
     -h|--help) usage; exit 0 ;;
-    *) echo "Argumen tidak dikenal: $arg" >&2; usage; exit 2 ;;
+    *) echo "Unknown argument: $arg" >&2; usage; exit 2 ;;
   esac
 done
 
 if [[ "$DRY_RUN" -eq 0 && "${EUID}" -ne 0 ]]; then
-  echo "Instalasi membutuhkan hak administrator. Jalankan: sudo ./install.sh" >&2
+  echo "Installation requires administrator rights. Run: sudo ./install.sh" >&2
   exit 1
 fi
 
@@ -42,9 +42,9 @@ say() {
   printf '\n==> %s\n' "$*"
 }
 
-say "UbuClean 1.0.0 — pemasangan"
+say "UbuClean 1.0.0 — installation"
 if [[ "$INSTALL_DEPS" -eq 1 ]]; then
-  say "Memasang dependensi apt"
+  say "Installing apt dependencies"
   run apt-get install -y --no-install-recommends \
     python3 \
     python3-gi \
@@ -56,10 +56,10 @@ if [[ "$INSTALL_DEPS" -eq 1 ]]; then
     psmisc \
     policykit-1
 else
-  say "Melewati dependensi apt (--no-deps)"
+  say "Skipping apt dependencies (--no-deps)"
 fi
 
-say "Menyalin aplikasi ke /usr/lib/ubuclean"
+say "Copying the application to /usr/lib/ubuclean"
 run install -d /usr/lib/ubuclean/bin
 run cp -a "$SCRIPT_DIR/ubuclean" /usr/lib/ubuclean/
 run install -m 0755 "$SCRIPT_DIR/bin/ubuclean" /usr/lib/ubuclean/bin/ubuclean
@@ -69,9 +69,9 @@ if [[ "$DRY_RUN" -eq 0 ]]; then
   find /usr/lib/ubuclean -type d -name __pycache__ -prune -exec rm -rf {} +
 fi
 
-say "Membuat launcher /usr/bin"
+say "Creating /usr/bin launchers"
 if [[ "$DRY_RUN" -eq 1 ]]; then
-  echo "+ tulis /usr/bin/ubuclean dan /usr/bin/ubuclean-helper"
+  echo "+ write /usr/bin/ubuclean and /usr/bin/ubuclean-helper"
 else
   cat > /usr/bin/ubuclean <<'EOF'
 #!/bin/sh
@@ -84,7 +84,7 @@ EOF
   chmod 0755 /usr/bin/ubuclean /usr/bin/ubuclean-helper
 fi
 
-say "Memasang data desktop, ikon, policy polkit, dan unit notifier"
+say "Installing desktop data, icons, polkit policy, and notifier unit"
 run install -Dm644 "$SCRIPT_DIR/ubuclean/data/com.ubuclean.App.desktop" \
   /usr/share/applications/com.ubuclean.App.desktop
 run install -Dm644 "$SCRIPT_DIR/ubuclean/data/icons/hicolor/scalable/apps/com.ubuclean.App.svg" \
@@ -103,11 +103,11 @@ if [[ "$DRY_RUN" -eq 0 ]]; then
   fi
 fi
 
-say "Selesai"
+say "Done"
 cat <<'EOF'
-Jalankan UbuClean dari menu aplikasi atau ketik: ubuclean
-GUI tidak boleh dijalankan sebagai root; operasi sistem memakai pkexec.
-Aktifkan pemantau notifikasi dari Pengaturan atau:
+Run UbuClean from the application menu or type: ubuclean
+The GUI must not be run as root; system operations use pkexec.
+Enable the notification watcher from Settings or:
   systemctl --user daemon-reload
   systemctl --user enable --now ubuclean-notifier.service
 EOF

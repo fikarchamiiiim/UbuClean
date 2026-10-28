@@ -1,4 +1,4 @@
-"""Ring skor kesehatan yang digambar dengan Cairo."""
+"""Health score ring drawn with Cairo."""
 
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ CAIRO_AVAILABLE = _cairo_available()
 
 
 class HealthRing(Gtk.Overlay):
-    """Gauge melingkar 270 derajat dengan animasi pengisian."""
+    """270-degree circular gauge with a fill animation."""
 
     __gtype_name__ = "UbuHealthRing"
 
@@ -38,13 +38,13 @@ class HealthRing(Gtk.Overlay):
         super().__init__()
         self.set_size_request(190, 190)
         self._severity = "success"
-        self._verdict_text = "Memuat…"
+        self._verdict_text = "Loading…"
         self._area = Gtk.DrawingArea()
         if CAIRO_AVAILABLE:
             self._area.set_draw_func(self._draw)
         else:
             self._area.set_tooltip_text(
-                "Grafik membutuhkan paket python3-gi-cairo (sudo apt install python3-gi-cairo)."
+                "Chart needs python3-gi-cairo (sudo apt install python3-gi-cairo)."
             )
         self.set_child(self._area)
         overlay = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
@@ -52,20 +52,20 @@ class HealthRing(Gtk.Overlay):
         overlay.set_valign(Gtk.Align.CENTER)
         self._value_label = label("0", xalign=0.5, css="uc-ring-value")
         self._value_label.set_halign(Gtk.Align.CENTER)
-        self._label = label("Skor sistem", xalign=0.5, css="uc-ring-label")
+        self._label = label("System score", xalign=0.5, css="uc-ring-label")
         self._label.set_halign(Gtk.Align.CENTER)
-        self._verdict = label("Memuat…", xalign=0.5, css="uc-ring-verdict")
+        self._verdict = label("Loading…", xalign=0.5, css="uc-ring-verdict")
         self._verdict.set_halign(Gtk.Align.CENTER)
         overlay.append(self._value_label)
         overlay.append(self._label)
         overlay.append(self._verdict)
         self.add_overlay(overlay)
-        set_accessible(self, "Skor kesehatan sistem", "Nilai 0 sampai 100")
+        set_accessible(self, "System health score", "Value from 0 to 100")
         self.connect("notify::value", self._on_value)
         self._animation: Adw.TimedAnimation | None = None
 
     def set_score(self, score: float, verdict: str, severity: str, *, animate: bool = True) -> None:
-        """Perbarui nilai, label, dan warna ring."""
+        """Update the value, label, and ring color."""
         self._verdict_text = verdict
         self._severity = severity
         self._verdict.set_text(verdict)
@@ -96,7 +96,7 @@ class HealthRing(Gtk.Overlay):
         try:
             self.update_property(
                 [Gtk.AccessibleProperty.LABEL, Gtk.AccessibleProperty.VALUE_TEXT],
-                [f"Skor kesehatan sistem {score} dari 100", self._verdict_text],
+                [f"System health score {score} out of 100", self._verdict_text],
             )
         except (AttributeError, TypeError):
             pass

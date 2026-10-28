@@ -22,7 +22,7 @@ def test_status(home: Path, fake_runner: FakeRunner) -> None:
     service = NotifierService(home, fake_runner, exec_start="/usr/bin/ubuclean")
     status = service.status()
     assert status.installed is False
-    assert "belum" in status.message.lower()
+    assert "not been installed" in status.message.lower()
     fake_runner.argv_responses[
         ("systemctl", "--user", "is-active", "ubuclean-notifier.service")
     ] = CommandResult(argv=("systemctl",), returncode=0, stdout="active\n")

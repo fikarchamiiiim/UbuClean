@@ -127,7 +127,7 @@ def test_purge_kernels_refuses_running(tmp_path: Path) -> None:
     ctx = HelperContext(root=tmp_path, runner=runner)
     result = actions.purge_kernels(ctx, [f"linux-image-{running}"])
     assert not result.ok
-    assert "sedang berjalan" in result.errors[0]
+    assert "running kernel" in result.errors[0].lower()
     assert not runner.calls
 
 
@@ -142,7 +142,7 @@ def test_purge_kernels_requires_backup(tmp_path: Path) -> None:
     ctx = HelperContext(root=tmp_path, runner=runner)
     result = actions.purge_kernels(ctx, ["linux-image-6.8.0-40-generic"])
     assert not result.ok
-    assert "cadangan" in result.errors[0]
+    assert "spare kernel" in result.errors[0]
     purge_calls = [call for call in runner.calls if call[:3] == ("apt-get", "purge", "-y")]
     assert not purge_calls
 
@@ -266,7 +266,7 @@ def test_clean_tmp_skips_in_use(tmp_path: Path) -> None:
     result = actions.clean_tmp(HelperContext(root=tmp_path, runner=runner), 7)
     assert result.ok
     assert old.exists()
-    assert "dipakai" in result.detail
+    assert "in use" in result.detail
 
 
 def test_drop_caches(tmp_path: Path) -> None:
@@ -293,7 +293,7 @@ def test_swap_refresh_insufficient_ram(tmp_path: Path) -> None:
     runner = FakeRunner()
     result = actions.swap_refresh(HelperContext(root=tmp_path, runner=runner), meminfo)
     assert not result.ok
-    assert "tidak cukup" in result.errors[0]
+    assert "not enough" in result.errors[0].lower()
     assert not runner.calls
 
 
@@ -316,7 +316,7 @@ def test_swap_refresh_swapon_failure(tmp_path: Path) -> None:
     )
     result = actions.swap_refresh(HelperContext(root=tmp_path, runner=runner), meminfo)
     assert not result.ok
-    assert "aktifkan kembali" in result.errors[0]
+    assert "re-enabled" in result.errors[0]
     assert runner.calls.count(("swapon", "-a")) == 2
 
 
@@ -342,7 +342,7 @@ def test_apt_remove_requires_installed(tmp_path: Path) -> None:
     )
     result = actions.apt_remove(HelperContext(root=tmp_path, runner=runner), "gimp")
     assert not result.ok
-    assert "tidak terpasang" in result.errors[0]
+    assert "not installed" in result.errors[0]
 
 
 def test_apt_remove_success(tmp_path: Path) -> None:

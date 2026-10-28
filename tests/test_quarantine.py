@@ -52,7 +52,7 @@ def test_restore_collision_uses_suffix(home: Path, quarantine: QuarantineStore) 
     result = quarantine.restore(entry.action_id)
     assert result.restored == 1
     assert source.read_text(encoding="utf-8") == "new"
-    restored = list((home / ".cache").glob("name.txt (dipulihkan)*"))
+    restored = list((home / ".cache").glob("name.txt (restored)*"))
     assert len(restored) == 1
     assert restored[0].read_text(encoding="utf-8") == "old"
 
@@ -69,7 +69,7 @@ def test_restore_refuses_protected_original(home: Path, quarantine: QuarantineSt
     result = quarantine.restore(entry.action_id)
     assert result.restored == 0
     assert result.failed == 1
-    assert "dilindungi" in result.errors[0].lower()
+    assert "protected" in result.errors[0].lower()
     assert quarantine.get(entry.action_id) is not None
 
 

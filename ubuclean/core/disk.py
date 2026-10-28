@@ -1,4 +1,4 @@
-"""Analisis folder dan pencari file duplikat (tanpa menghapus otomatis)."""
+"""Folder analysis and duplicate file finder (never deletes automatically)."""
 
 from __future__ import annotations
 
@@ -19,12 +19,12 @@ SKIP_DIR_NAMES = {".git"}
 
 
 class InvalidScanRoot(ValueError):
-    """Root pemindaian tidak aman atau tidak valid."""
+    """The scan root is unsafe or invalid."""
 
 
 @dataclass(frozen=True, slots=True)
 class DiskEntry:
-    """Satu file atau folder dengan ukuran."""
+    """A single file or folder together with its size."""
 
     path: Path
     size: int
@@ -33,7 +33,7 @@ class DiskEntry:
 
 @dataclass(frozen=True, slots=True)
 class ScanProgress:
-    """Progres pemindaian folder."""
+    """Folder scan progress."""
 
     files: int = 0
     dirs: int = 0
@@ -43,7 +43,7 @@ class ScanProgress:
 
 @dataclass(slots=True)
 class FolderScanResult:
-    """Hasil pemindaian satu folder."""
+    """Scan result for a single folder."""
 
     root: Path
     total_bytes: int = 0
@@ -57,7 +57,7 @@ class FolderScanResult:
     cancelled: bool = False
 
     def to_dict(self) -> dict[str, object]:
-        """Representasi JSON-able."""
+        """JSON-able representation."""
         return {
             "root": str(self.root),
             "total_bytes": self.total_bytes,
@@ -80,18 +80,18 @@ DuplicateProgressFn = Callable[["DuplicateProgress"], None]
 
 
 def validate_scan_root(root: Path | str) -> Path:
-    """Validasi folder yang boleh dipindai (bukan pseudo filesystem)."""
+    """Validate a folder that may be scanned (not a pseudo filesystem)."""
     path = Path(root)
     if not path.is_absolute():
-        raise InvalidScanRoot("Folder harus berupa path absolut.")
+        raise InvalidScanRoot("The folder must be an absolute path.")
     try:
         resolved = path.resolve(strict=True)
     except OSError as exc:
-        raise InvalidScanRoot(f"Folder tidak dapat diakses: {exc}") from exc
+        raise InvalidScanRoot(f"Folder cannot be accessed: {exc}") from exc
     if not resolved.is_dir():
-        raise InvalidScanRoot("Path bukan folder.")
+        raise InvalidScanRoot("The path is not a folder.")
     if str(resolved) in PSEUDO_FS:
-        raise InvalidScanRoot("Pseudo filesystem tidak boleh dipindai.")
+        raise InvalidScanRoot("Pseudo filesystems cannot be scanned.")
     return resolved
 
 
@@ -103,10 +103,10 @@ def scan_folder(
     top_n: int = 25,
     same_device: bool = True,
 ) -> FolderScanResult:
-    """Hitung ukuran folder secara rekursif tanpa mengikuti symlink.
+    """Compute a folder's size recursively without following symlinks.
 
-    Fungsi ini aman dijalankan di thread pekerja. ``progress`` dipanggil
-    secara berkala, dan ``cancel.set()`` menghentikan pemindaian.
+    This function is safe to run on a worker thread. ``progress`` is called
+    periodically, and ``cancel.set()`` stops the scan.
     """
     started = time.monotonic()
     root_path = validate_scan_root(root)
@@ -207,7 +207,7 @@ def scan_folder(
 
 @dataclass(frozen=True, slots=True)
 class DuplicateGroup:
-    """Sekelompok file identik berdasarkan hash penuh."""
+    """A group of identical files based on the full hash."""
 
     digest: str
     size: int
@@ -215,13 +215,13 @@ class DuplicateGroup:
 
     @property
     def wasted_bytes(self) -> int:
-        """Ruang yang bisa dihemat bila menyisakan satu file."""
+        """Space that could be saved by keeping only one file."""
         return self.size * max(0, len(self.files) - 1)
 
 
 @dataclass(frozen=True, slots=True)
 class DuplicateProgress:
-    """Progres pencarian duplikat."""
+    """Duplicate search progress."""
 
     stage: str
     processed: int
@@ -231,7 +231,7 @@ class DuplicateProgress:
 
 @dataclass(slots=True)
 class DuplicateScanResult:
-    """Hasil pencarian file duplikat."""
+    """Result of the duplicate file search."""
 
     root: Path
     groups: list[DuplicateGroup] = field(default_factory=list)
@@ -243,16 +243,16 @@ class DuplicateScanResult:
 
     @property
     def total_wasted(self) -> int:
-        """Total byte yang bisa dihemat."""
+        """Total bytes that could be saved."""
         return sum(group.wasted_bytes for group in self.groups)
 
     @property
     def duplicate_files(self) -> int:
-        """Jumlah file yang tergabung dalam grup duplikat."""
+        """Number of files gathered into duplicate groups."""
         return sum(len(group.files) for group in self.groups)
 
     def to_dict(self) -> dict[str, object]:
-        """Representasi JSON-able."""
+        """JSON-able representation."""
         return {
             "root": str(self.root),
             "groups": [
@@ -341,7 +341,7 @@ def find_duplicates(
     min_size: int = 4096,
     max_groups: int = 500,
 ) -> DuplicateScanResult:
-    """Cari file identik: ukuran → hash parsial → hash penuh."""
+    """Find identical files: size → partial hash → full hash."""
     started = time.monotonic()
     root_path = validate_scan_root(root)
     cancel = cancel or threading.Event()
@@ -376,7 +376,7 @@ def find_duplicates(
             digest = _hash_file(path, partial=True)
             processed += 1
             if digest is None:
-                result.errors.append(f"{path}: tidak bisa membaca file")
+                result.errors.append(f"{path}: cannot read file")
                 continue
             by_partial.setdefault((size, digest), []).append(path)
             if progress is not None and processed % 50 == 0:
@@ -398,7 +398,7 @@ def find_duplicates(
             digest = _hash_file(path, partial=False)
             processed += 1
             if digest is None:
-                result.errors.append(f"{path}: tidak bisa membaca file")
+                result.errors.append(f"{path}: cannot read file")
                 continue
             by_full.setdefault((size, digest), []).append(path)
             if progress is not None and processed % 20 == 0:

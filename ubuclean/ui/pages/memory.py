@@ -1,4 +1,4 @@
-"""Halaman Memori: statistik RAM/swap dan aksi drop caches."""
+"""Memory page: RAM/swap statistics and drop caches actions."""
 
 from __future__ import annotations
 
@@ -30,17 +30,17 @@ from ubuclean.ui.pages.base import BasePage
 
 
 class MemoryPage(BasePage):
-    """Panel RAM, swap, dan pembersihan cache kernel."""
+    """RAM, swap, and kernel cache cleaning panel."""
 
     def __init__(self, window: Any) -> None:
-        super().__init__("Memori", "RAM, swap, dan cache sistem")
+        super().__init__("Memory", "RAM, swap, and system cache")
         self.window = window
         self.services = window.services
         self._busy = False
         self._eligibility: SwapEligibility | None = None
         self._loading_config = False
 
-        refresh = icon_button("view-refresh-symbolic", "Muat ulang statistik memori")
+        refresh = icon_button("view-refresh-symbolic", "Reload memory statistics")
         refresh.connect("clicked", lambda *_: self._refresh())
         self.add_action(refresh)
 
@@ -60,11 +60,11 @@ class MemoryPage(BasePage):
         box.add_css_class("uc-info")
         box.append(icon("dialog-information-symbolic", 20, css="uc-nav-icon"))
         text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2, hexpand=True)
-        text.append(label("Drop caches bukan jalan pintas performa", css="uc-section"))
+        text.append(label("Drop caches is not a performance shortcut", css="uc-section"))
         text.append(
             label(
-                "Membuang cache hanya mengosongkan memori yang akan terbentuk lagi saat file dibaca. "
-                "Ini tidak selalu membuat sistem lebih cepat, dan bisa terasa lebih lambat sesaat.",
+                "Dropping caches only frees memory that will be rebuilt as files are read. "
+                "It does not always make the system faster, and it can feel slower for a moment.",
                 css="uc-subtle",
                 wrap=True,
             )
@@ -88,7 +88,7 @@ class MemoryPage(BasePage):
 
     def _stats_card(self) -> Gtk.Widget:
         box = card(spacing=18)
-        box.append(label("Penggunaan saat ini", css="uc-section"))
+        box.append(label("Current usage", css="uc-section"))
         self._ram_block = self._stat_block("RAM", "drive-harddisk-solidstate-symbolic")
         self._cache_block = self._stat_block("Cache + buffer", "folder-symbolic")
         self._swap_block = self._stat_block("Swap", "drive-harddisk-symbolic")
@@ -99,29 +99,29 @@ class MemoryPage(BasePage):
 
     def _drop_group(self) -> Gtk.Widget:
         group = Adw.PreferencesGroup(
-            title="Buang cache RAM",
-            description="sync dijalankan sebelum menulis level ke /proc/sys/vm/drop_caches.",
+            title="Drop RAM caches",
+            description="sync runs before writing the level to /proc/sys/vm/drop_caches.",
         )
         self._level_row = Adw.ComboRow(
             title="Level",
-            subtitle="Pilih seberapa agresif cache kernel dibuang.",
+            subtitle="Choose how aggressively the kernel cache is dropped.",
         )
         self._level_row.set_model(
             Gtk.StringList.new(
                 [
                     "Level 1 — page cache",
                     "Level 2 — page cache + dentries/inodes",
-                    "Level 3 — semua cache",
+                    "Level 3 — all caches",
                 ]
             )
         )
         self._level_row.connect("notify::selected", self._on_level_changed)
         group.add(self._level_row)
         row = Adw.ActionRow(
-            title="Bersihkan cache sekarang",
-            subtitle="Membutuhkan autentikasi administrator.",
+            title="Clean cache now",
+            subtitle="Requires administrator authentication.",
         )
-        self._drop_button = button("Buang cache", icon_name="edit-clear-all-symbolic")
+        self._drop_button = button("Drop caches", icon_name="edit-clear-all-symbolic")
         self._drop_button.set_valign(Gtk.Align.CENTER)
         self._drop_button.connect("clicked", lambda *_: self._confirm_drop())
         row.add_suffix(self._drop_button)
@@ -130,15 +130,15 @@ class MemoryPage(BasePage):
 
     def _swap_group(self) -> Gtk.Widget:
         group = Adw.PreferencesGroup(
-            title="Segarkan swap",
-            description="Menjalankan swapoff -a lalu swapon -a hanya jika RAM bebas cukup.",
+            title="Refresh swap",
+            description="Runs swapoff -a then swapon -a only when enough RAM is free.",
         )
         self._swap_row = Adw.ActionRow(
-            title="Segarkan swap",
-            subtitle="Memeriksa ketersediaan RAM sebelum bertindak.",
+            title="Refresh swap",
+            subtitle="Checks available RAM before acting.",
         )
         self._swap_row.add_prefix(icon("drive-harddisk-symbolic", 16, css="uc-nav-icon"))
-        self._swap_button = button("Segarkan", icon_name="view-refresh-symbolic")
+        self._swap_button = button("Refresh", icon_name="view-refresh-symbolic")
         self._swap_button.set_valign(Gtk.Align.CENTER)
         self._swap_button.connect("clicked", lambda *_: self._confirm_swap())
         self._swap_row.add_suffix(self._swap_button)
@@ -168,7 +168,7 @@ class MemoryPage(BasePage):
         def failed(exc: Exception) -> None:
             self._busy = False
             self._drop_button.set_sensitive(True)
-            self.window.toast(f"Gagal membaca memori: {exc}")
+            self.window.toast(f"Failed to read memory: {exc}")
 
         run_async(collect, done, failed)
 
@@ -176,7 +176,7 @@ class MemoryPage(BasePage):
         ram = self._ram_block
         ram["value"].set_text(format_percent(stats.percent, precision=1))
         ram["subtitle"].set_text(
-            f"{format_bytes(stats.used)} / {format_bytes(stats.total)} · tersedia {format_bytes(stats.available)}"
+            f"{format_bytes(stats.used)} / {format_bytes(stats.total)} · {format_bytes(stats.available)} available"
         )
         set_progress(ram["bar"], stats.percent / 100, severity=severity_for(stats.percent))
 
@@ -190,8 +190,8 @@ class MemoryPage(BasePage):
 
         swap = self._swap_block
         if stats.swap_total <= 0:
-            swap["value"].set_text("Tidak ada")
-            swap["subtitle"].set_text("Sistem tidak memiliki partisi/file swap.")
+            swap["value"].set_text("None")
+            swap["subtitle"].set_text("The system has no swap partition/file.")
             set_progress(swap["bar"], 0.0)
         else:
             swap["value"].set_text(format_percent(stats.swap_percent, precision=1))
@@ -225,18 +225,18 @@ class MemoryPage(BasePage):
     def _confirm_drop(self) -> None:
         level = int(self._level_row.get_selected()) + 1
         descriptions = {
-            1: "page cache saja",
-            2: "page cache, dentries, dan inodes",
-            3: "semua cache (paling agresif)",
+            1: "page cache only",
+            2: "page cache, dentries, and inodes",
+            3: "all caches (most aggressive)",
         }
         ask_confirm(
             self,
-            heading=f"Buang cache level {level}?",
+            heading=f"Drop caches level {level}?",
             body=(
-                f"sync akan dijalankan lalu {descriptions[level]} dibuang. "
-                "Cache akan terbentuk kembali; sistem bisa sesaat terasa lebih lambat."
+                f"sync will run first, then the following will be dropped: {descriptions[level]}. "
+                "Caches will build up again; the system may feel slower for a moment."
             ),
-            confirm_label="Buang cache",
+            confirm_label="Drop caches",
             on_confirm=lambda: self._run_drop(level),
         )
 
@@ -256,9 +256,9 @@ class MemoryPage(BasePage):
             self._swap_button.set_sensitive(True)
             self._show_outcome(outcome, title=f"Cache level {level}")
             self.window.toast(
-                f"Berhasil membebaskan {format_bytes(outcome.freed_bytes)}"
+                f"Freed {format_bytes(outcome.freed_bytes)}"
                 if outcome.ok
-                else "Drop caches gagal"
+                else "Drop caches failed"
             )
             self._refresh()
 
@@ -266,7 +266,7 @@ class MemoryPage(BasePage):
             self._busy = False
             self._drop_button.set_sensitive(True)
             self._swap_button.set_sensitive(True)
-            self.window.toast(f"Drop caches gagal: {exc}")
+            self.window.toast(f"Drop caches failed: {exc}")
 
         run_async(work, done, failed)
 
@@ -274,18 +274,18 @@ class MemoryPage(BasePage):
         if self._eligibility is not None and not self._eligibility.can_refresh:
             show_info(
                 self,
-                heading="Swap tidak dapat disegarkan",
+                heading="Swap cannot be refreshed",
                 body=self._eligibility.message,
             )
             return
         ask_confirm(
             self,
-            heading="Segarkan swap?",
+            heading="Refresh swap?",
             body=(
-                "Isi swap akan dipindahkan kembali ke RAM, lalu swap diaktifkan ulang. "
-                "Aplikasi bisa terasa berhenti sesaat."
+                "Swap contents will be moved back to RAM, then swap will be enabled again. "
+                "Applications may pause for a moment."
             ),
-            confirm_label="Segarkan swap",
+            confirm_label="Refresh swap",
             on_confirm=self._run_swap,
         )
 
@@ -304,17 +304,17 @@ class MemoryPage(BasePage):
             self._swap_button.set_sensitive(True)
             self._drop_button.set_sensitive(True)
             if outcome.ok:
-                self._show_outcome(outcome, title="Swap disegarkan")
-                self.window.toast("Swap berhasil disegarkan")
+                self._show_outcome(outcome, title="Swap refreshed")
+                self.window.toast("Swap refreshed")
             else:
-                show_info(self, heading="Swap tidak disegarkan", body="\n".join(outcome.errors))
+                show_info(self, heading="Swap not refreshed", body="\n".join(outcome.errors))
             self._refresh()
 
         def failed(exc: Exception) -> None:
             self._busy = False
             self._swap_button.set_sensitive(True)
             self._drop_button.set_sensitive(True)
-            self.window.toast(f"Segarkan swap gagal: {exc}")
+            self.window.toast(f"Refresh swap failed: {exc}")
 
         run_async(work, done, failed)
 
@@ -331,7 +331,7 @@ class MemoryPage(BasePage):
         after = outcome.after
         rows = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=18)
         rows.set_homogeneous(True)
-        for caption, stats in (("Sebelum", before), ("Sesudah", after)):
+        for caption, stats in (("Before", before), ("After", after)):
             column = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
             column.append(label(caption, css="uc-label"))
             column.append(

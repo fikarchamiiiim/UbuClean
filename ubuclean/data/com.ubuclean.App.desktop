@@ -1,8 +1,8 @@
 [Desktop Entry]
 Type=Application
 Name=UbuClean
-GenericName=Pembersih Sistem
-Comment=Bersihkan sampah sistem, kosongkan cache RAM, dan rawat Ubuntu Desktop
+GenericName=System Cleaner
+Comment=Clean up system junk, free RAM caches, and maintain Ubuntu Desktop
 Exec=ubuclean
 Icon=com.ubuclean.App
 Terminal=false

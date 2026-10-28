@@ -1,5 +1,5 @@
 [Unit]
-Description=Pemantau notifikasi UbuClean
+Description=UbuClean notification watcher
 
 [Service]
 Type=simple

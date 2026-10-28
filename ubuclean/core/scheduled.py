@@ -1,4 +1,4 @@
-"""Mode headless ``ubuclean --run-scheduled``."""
+"""Headless ``ubuclean --run-scheduled`` mode."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from ubuclean.core.scan import CleanAssistant
 
 @dataclass(slots=True)
 class ScheduledOutcome:
-    """Ringkasan satu eksekusi pembersihan terjadwal."""
+    """Summary of one scheduled cleaning run."""
 
     started_at: float
     finished_at: float = 0.0
@@ -27,11 +27,11 @@ class ScheduledOutcome:
 
     @property
     def freed_bytes(self) -> int:
-        """Total byte yang dibersihkan."""
+        """Total bytes cleaned."""
         return self.report.freed_bytes if self.report else 0
 
     def to_dict(self) -> dict[str, Any]:
-        """Representasi JSON-able."""
+        """JSON-able representation."""
         return {
             "started_at": self.started_at,
             "finished_at": self.finished_at,
@@ -49,9 +49,9 @@ def _notify_summary(ctx: Context, outcome: ScheduledOutcome) -> bool:
         return False
     from ubuclean.core.util import format_bytes
 
-    parts = [f"Pembersihan terjadwal: {format_bytes(outcome.freed_bytes)} dibersihkan."]
+    parts = [f"Scheduled cleaning: {format_bytes(outcome.freed_bytes)} cleaned."]
     if outcome.skipped:
-        parts.append(f"{len(outcome.skipped)} kategori dilewati (butuh autentikasi/berisiko).")
+        parts.append(f"{len(outcome.skipped)} categories skipped (they need authentication or are risky).")
     result = ctx.runner.run(
         [
             "notify-send",
@@ -66,7 +66,7 @@ def _notify_summary(ctx: Context, outcome: ScheduledOutcome) -> bool:
 
 
 def run_scheduled(ctx: Context | None = None, *, notify: bool = True) -> ScheduledOutcome:
-    """Jalankan kategori aman tanpa root; kategori root dicatat dilewati."""
+    """Run the safe categories without root; root categories are recorded as skipped."""
     ctx = ctx or Context.build()
     config = ctx.config
     requested = [str(item) for item in config.schedule.get("categories", [])]
@@ -77,7 +77,7 @@ def run_scheduled(ctx: Context | None = None, *, notify: bool = True) -> Schedul
     for category_id in dict.fromkeys(requested):
         category = CATEGORY_MAP.get(category_id)
         if category is None:
-            outcome.errors.append(f"Kategori tidak dikenal: {category_id}")
+            outcome.errors.append(f"Unknown category: {category_id}")
             continue
         if not is_schedule_safe(category_id):
             outcome.skipped.append(category_id)
@@ -94,7 +94,7 @@ def run_scheduled(ctx: Context | None = None, *, notify: bool = True) -> Schedul
         category = CATEGORY_MAP[category_id]
         if preview is None or not preview.supported:
             outcome.skipped.append(category_id)
-            _log_skipped(ctx, category_id, category.label, "Pemindaian tidak tersedia.")
+            _log_skipped(ctx, category_id, category.label, "Scan is unavailable.")
             continue
         if category.privileged:
             outcome.skipped.append(category_id)
@@ -102,7 +102,7 @@ def run_scheduled(ctx: Context | None = None, *, notify: bool = True) -> Schedul
                 ctx,
                 category_id,
                 category.label,
-                "Dilewati: operasi root membutuhkan autentikasi.",
+                "Skipped: root operations require authentication.",
             )
             continue
         report = assistant.clean([preview])
@@ -120,11 +120,11 @@ def run_scheduled(ctx: Context | None = None, *, notify: bool = True) -> Schedul
             HistoryEntry(
                 action="scheduled",
                 category="schedule",
-                label="Pembersihan terjadwal",
+                label="Scheduled cleaning",
                 items=sum(item.removed for item in (outcome.report.outcomes if outcome.report else [])),
                 bytes=outcome.freed_bytes,
                 ok=not outcome.errors,
-                detail=f"{len(outcome.cleaned)} kategori dibersihkan, {len(outcome.skipped)} dilewati.",
+                detail=f"{len(outcome.cleaned)} categories cleaned, {len(outcome.skipped)} skipped.",
                 errors=list(outcome.errors),
             )
         )

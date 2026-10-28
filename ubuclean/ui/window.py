@@ -1,4 +1,4 @@
-"""Jendela utama dengan sidebar Adw.NavigationSplitView."""
+"""Main window with an Adw.NavigationSplitView sidebar."""
 
 from __future__ import annotations
 
@@ -33,20 +33,20 @@ from ubuclean.ui.pages import (
 )
 
 NAV_ITEMS: tuple[tuple[str, str, str], ...] = (
-    ("home", "Beranda", "go-home-symbolic"),
-    ("clean", "Bersihkan", "edit-clear-all-symbolic"),
-    ("memory", "Memori", "drive-harddisk-solidstate-symbolic"),
+    ("home", "Home", "go-home-symbolic"),
+    ("clean", "Clean", "edit-clear-all-symbolic"),
+    ("memory", "Memory", "drive-harddisk-solidstate-symbolic"),
     ("monitor", "Monitor", "preferences-system-symbolic"),
     ("disk", "Disk", "drive-harddisk-symbolic"),
     ("startup", "Startup", "applications-system-symbolic"),
-    ("schedule", "Jadwal", "alarm-symbolic"),
-    ("history", "Riwayat", "document-open-recent-symbolic"),
-    ("settings", "Pengaturan", "emblem-system-symbolic"),
+    ("schedule", "Schedule", "alarm-symbolic"),
+    ("history", "History", "document-open-recent-symbolic"),
+    ("settings", "Settings", "emblem-system-symbolic"),
 )
 
 
 class MainWindow(Adw.ApplicationWindow):
-    """Kerangka aplikasi: sidebar, NavigationView, dan ToastOverlay."""
+    """Application shell: sidebar, NavigationView, and ToastOverlay."""
 
     def __init__(
         self,
@@ -87,7 +87,7 @@ class MainWindow(Adw.ApplicationWindow):
 
         split = Adw.NavigationSplitView()
         sidebar_page = Adw.NavigationPage(child=self._build_sidebar(), title=constants.APP_NAME)
-        content_page = Adw.NavigationPage(child=self.nav_view, title="Konten")
+        content_page = Adw.NavigationPage(child=self.nav_view, title="Content")
         split.set_sidebar(sidebar_page)
         split.set_content(content_page)
         split.set_min_sidebar_width(210)
@@ -133,7 +133,7 @@ class MainWindow(Adw.ApplicationWindow):
     def _attach_sidebar_toggles(self) -> None:
         self._sidebar_toggles: list[Gtk.Button] = []
         for page in self._pages.values():
-            toggle = icon_button("sidebar-show-symbolic", "Tampilkan sidebar")
+            toggle = icon_button("sidebar-show-symbolic", "Show sidebar")
             toggle.set_visible(False)
             toggle.connect("clicked", lambda *_: self.split_view.set_show_content(False))
             page.header.pack_start(toggle)
@@ -158,15 +158,15 @@ class MainWindow(Adw.ApplicationWindow):
         header = Adw.HeaderBar()
         header.set_show_start_title_buttons(False)
         header.set_show_end_title_buttons(False)
-        header.set_title_widget(Adw.WindowTitle(title=constants.APP_NAME, subtitle="Perawatan sistem"))
+        header.set_title_widget(Adw.WindowTitle(title=constants.APP_NAME, subtitle="System maintenance"))
         menu = Gio.Menu()
-        menu.append("Bantuan", "win.help")
-        menu.append("Tentang UbuClean", "win.about")
+        menu.append("Help", "win.help")
+        menu.append("About UbuClean", "win.about")
         menu_button = Gtk.MenuButton()
         menu_button.set_icon_name("open-menu-symbolic")
         menu_button.set_popover(Gtk.PopoverMenu.new_from_model(menu))
-        menu_button.set_tooltip_text("Menu utama")
-        set_accessible(menu_button, "Menu utama")
+        menu_button.set_tooltip_text("Main menu")
+        set_accessible(menu_button, "Main menu")
         menu_button.add_css_class("flat")
         header.pack_end(menu_button)
         toolbar.add_top_bar(header)
@@ -220,21 +220,21 @@ class MainWindow(Adw.ApplicationWindow):
         show_shortcuts(
             self,
             [
-                ("Ctrl+R", "Pindai ulang / segarkan data"),
-                ("Ctrl+,", "Buka Pengaturan"),
-                ("F1", "Tampilkan bantuan pintasan"),
-                ("Ctrl+Q", "Keluar dari UbuClean"),
-                ("Tab", "Berpindah antar kontrol"),
-                ("Space", "Mengaktifkan tombol atau switch"),
+                ("Ctrl+R", "Scan again / refresh data"),
+                ("Ctrl+,", "Open Settings"),
+                ("F1", "Show shortcut help"),
+                ("Ctrl+Q", "Quit UbuClean"),
+                ("Tab", "Move between controls"),
+                ("Space", "Activate a button or switch"),
             ],
         )
 
     def show_help(self) -> None:
-        """Buka bantuan pintasan keyboard."""
+        """Open the keyboard shortcut help."""
         self._show_help()
 
     def show_about(self) -> None:
-        """Buka dialog Tentang."""
+        """Open the About dialog."""
         self._show_about()
 
     def _show_about(self) -> None:
@@ -243,10 +243,7 @@ class MainWindow(Adw.ApplicationWindow):
             application_icon=constants.APP_ID,
             developer_name="UbuClean",
             version=constants.VERSION,
-            comments=(
-                "Pembersih sistem, pemantau, dan perawatan untuk Ubuntu Desktop. "
-                "Semua teks antarmuka dalam Bahasa Indonesia."
-            ),
+            comments="System cleaner, monitor, and maintenance for Ubuntu Desktop.",
             website="https://github.com/ubuclean/ubuclean",
             issue_url="https://github.com/ubuclean/ubuclean/issues",
             license_type=Gtk.License.GPL_3_0,
@@ -262,7 +259,7 @@ class MainWindow(Adw.ApplicationWindow):
         action: Callable[[], None] | None = None,
         timeout: int = 4,
     ) -> None:
-        """Tampilkan Adw.Toast, opsional dengan tombol aksi."""
+        """Show an Adw.Toast, optionally with an action button."""
         toast = Adw.Toast(title=message, timeout=timeout)
         toast.set_use_markup(False)
         if action_label and action is not None:
@@ -271,7 +268,7 @@ class MainWindow(Adw.ApplicationWindow):
         self.toast_overlay.add_toast(toast)
 
     def show_page(self, tag: str) -> None:
-        """Navigasi ke halaman sidebar."""
+        """Navigate to a sidebar page."""
         if tag not in self._pages:
             return
         self._navigate(tag)

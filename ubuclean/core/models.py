@@ -1,4 +1,4 @@
-"""Model data yang dipakai bersama oleh core, CLI, dan UI."""
+"""Data models shared by the core, CLI, and UI."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from typing import Any
 
 
 class Group(str, Enum):
-    """Kelompok tampilan kategori pembersihan."""
+    """Display group for cleaning categories."""
 
     SYSTEM = "system"
     USER = "user"
@@ -20,12 +20,12 @@ class Group(str, Enum):
 
 @dataclass(frozen=True, slots=True)
 class Category:
-    """Metadata satu kategori pembersihan.
+    """Metadata for a single cleaning category.
 
-    ``privileged`` menandai operasi yang membutuhkan helper root, ``risky``
-    menandai kategori yang tidak boleh ikut jadwal otomatis dan tidak
-    dicentang secara default, sedangkan ``quarantine`` menandai item yang
-    dipindahkan ke karantina sebelum dihapus permanen.
+    ``privileged`` marks operations that require the root helper, ``risky``
+    marks categories that must not be part of the automatic schedule and are
+    not checked by default, while ``quarantine`` marks items that are moved to
+    quarantine before being permanently deleted.
     """
 
     id: str
@@ -43,7 +43,7 @@ class Category:
 
 @dataclass(frozen=True, slots=True)
 class PreviewItem:
-    """Satu baris hasil pindai (file, paket, atau revisi)."""
+    """A single scan result row (file, package, or revision)."""
 
     id: str
     label: str
@@ -53,7 +53,7 @@ class PreviewItem:
     protected: bool = False
 
     def as_dict(self) -> dict[str, Any]:
-        """Representasi JSON-able untuk mode CLI."""
+        """JSON-able representation for CLI mode."""
         return {
             "id": self.id,
             "label": self.label,
@@ -66,7 +66,7 @@ class PreviewItem:
 
 @dataclass(slots=True)
 class Preview:
-    """Hasil pindai satu kategori, sekaligus token izin eksekusi."""
+    """Scan result for one category, and at the same time the execution permission token."""
 
     category_id: str
     items: list[PreviewItem] = field(default_factory=list)
@@ -80,18 +80,18 @@ class Preview:
 
     @property
     def total_bytes(self) -> int:
-        """Total ukuran item, atau estimasi agregat bila disediakan."""
+        """Total size of the items, or the aggregate estimate when provided."""
         if self.estimated_bytes is not None:
             return max(0, self.estimated_bytes)
         return sum(item.size for item in self.items if not item.protected)
 
     @property
     def item_count(self) -> int:
-        """Jumlah item yang akan dibersihkan."""
+        """Number of items that will be cleaned."""
         return sum(1 for item in self.items if not item.protected)
 
     def to_dict(self) -> dict[str, Any]:
-        """Representasi JSON-able untuk mode CLI dan dry-run."""
+        """JSON-able representation for CLI mode and dry-run."""
         return {
             "category": self.category_id,
             "token": self.token,
@@ -108,7 +108,7 @@ class Preview:
 
 @dataclass(slots=True)
 class CleanOutcome:
-    """Hasil eksekusi satu kategori."""
+    """Execution result for one category."""
 
     category_id: str
     freed_bytes: int = 0
@@ -122,16 +122,16 @@ class CleanOutcome:
 
     @property
     def ok(self) -> bool:
-        """True bila tidak ada item yang gagal."""
+        """True when no item failed."""
         return self.failed == 0
 
     @property
     def immediate_bytes(self) -> int:
-        """Byte yang benar-benar hilang dari disk saat ini."""
+        """Bytes actually gone from disk right now."""
         return max(0, self.freed_bytes - self.quarantined_bytes)
 
     def merge(self, other: "CleanOutcome") -> None:
-        """Gabungkan hasil lain ke dalam hasil ini."""
+        """Merge another result into this one."""
         self.freed_bytes += other.freed_bytes
         self.removed += other.removed
         self.failed += other.failed
@@ -142,7 +142,7 @@ class CleanOutcome:
             self.quarantine_id = other.quarantine_id
 
     def to_dict(self) -> dict[str, Any]:
-        """Representasi JSON-able untuk log dan CLI."""
+        """JSON-able representation for logs and the CLI."""
         return {
             "category": self.category_id,
             "freed_bytes": self.freed_bytes,
@@ -159,7 +159,7 @@ class CleanOutcome:
 
 @dataclass(slots=True)
 class CleanReport:
-    """Ringkasan seluruh eksekusi pembersihan."""
+    """Summary of the whole cleaning run."""
 
     outcomes: list[CleanOutcome] = field(default_factory=list)
     dry_run: bool = False
@@ -168,21 +168,21 @@ class CleanReport:
 
     @property
     def freed_bytes(self) -> int:
-        """Total byte yang dibebaskan."""
+        """Total bytes freed."""
         return sum(outcome.freed_bytes for outcome in self.outcomes)
 
     @property
     def failures(self) -> int:
-        """Total item yang gagal diproses."""
+        """Total items that failed to process."""
         return sum(outcome.failed for outcome in self.outcomes)
 
     @property
     def errors(self) -> list[str]:
-        """Kumpulan pesan error dari semua kategori."""
+        """Collection of error messages from all categories."""
         return [error for outcome in self.outcomes for error in outcome.errors]
 
     def to_dict(self) -> dict[str, Any]:
-        """Representasi JSON-able untuk CLI dan log."""
+        """JSON-able representation for the CLI and logs."""
         return {
             "dry_run": self.dry_run,
             "freed_bytes": self.freed_bytes,

@@ -1,1 +1,1 @@
-"""Logika inti UbuClean yang tidak bergantung pada GTK."""
+"""UbuClean core logic that does not depend on GTK."""

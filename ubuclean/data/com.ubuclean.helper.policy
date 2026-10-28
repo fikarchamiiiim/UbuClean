@@ -8,8 +8,8 @@
   <icon_name>com.ubuclean.App</icon_name>
 
   <action id="com.ubuclean.helper.run">
-    <description>Menjalankan tindakan perawatan sistem UbuClean</description>
-    <message>Autentikasi diperlukan untuk membersihkan cache sistem, log, atau paket.</message>
+    <description>Run UbuClean system maintenance actions</description>
+    <message>Authentication is required to clean system caches, logs, or packages.</message>
     <defaults>
       <allow_any>no</allow_any>
       <allow_inactive>no</allow_inactive>

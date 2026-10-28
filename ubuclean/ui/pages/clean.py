@@ -1,4 +1,4 @@
-"""Halaman Bersihkan dan dialog hasil pembersihan."""
+"""Clean page and cleanup result dialog."""
 
 from __future__ import annotations
 
@@ -32,18 +32,18 @@ from ubuclean.ui.common import (
 from ubuclean.ui.pages.base import BasePage
 
 GROUP_TITLES = {
-    Group.SYSTEM: ("Sistem", "Operasi ini memakai helper root melalui pkexec."),
-    Group.USER: ("Pengguna", "Item aman dipindahkan ke karantina sebelum dihapus permanen."),
-    Group.DEVELOPER: ("Developer", "Semua kategori developer tidak dicentang secara default."),
+    Group.SYSTEM: ("System", "This operation uses a root helper via pkexec."),
+    Group.USER: ("User", "Items are safely moved to quarantine before permanent deletion."),
+    Group.DEVELOPER: ("Developer", "All developer categories are unchecked by default."),
 }
 MAX_DETAIL_ROWS = 120
 
 
 class CleanPage(BasePage):
-    """Daftar kategori dengan switch, ukuran, pratinjau, dan aksi massal."""
+    """Category list with switches, sizes, preview, and bulk actions."""
 
     def __init__(self, window: Any) -> None:
-        super().__init__("Bersihkan", "Tinjau setiap kategori sebelum menghapus", maximum_width=960)
+        super().__init__("Clean", "Review each category before deleting", maximum_width=960)
         self.window = window
         self.services = window.services
         self._previews: dict[str, Preview] = dict(self.services.last_previews)
@@ -55,14 +55,14 @@ class CleanPage(BasePage):
         self._did_scan = bool(self._previews)
 
         self._scan_content = Adw.ButtonContent(
-            icon_name="view-refresh-symbolic", label="Pindai ulang"
+            icon_name="view-refresh-symbolic", label="Scan again"
         )
         self._scan_button = button()
         self._scan_button.set_child(self._scan_content)
         self._scan_button.connect("clicked", lambda *_: self.scan())
         self.add_action(self._scan_button)
         uninstall_button = icon_button(
-            "application-x-executable-symbolic", "Uninstaller aplikasi"
+            "application-x-executable-symbolic", "Application uninstaller"
         )
         uninstall_button.connect("clicked", lambda *_: self._open_uninstaller())
         self.add_action(uninstall_button)
@@ -80,7 +80,7 @@ class CleanPage(BasePage):
         box.set_visible(False)
         top = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
         top.append(icon("view-refresh-symbolic", 16, css="uc-nav-icon"))
-        self._progress_label = label("Memindai kategori…", css="uc-subtle", hexpand=True)
+        self._progress_label = label("Scanning categories…", css="uc-subtle", hexpand=True)
         top.append(self._progress_label)
         self._progress_bar = progress()
         box.append(top)
@@ -109,7 +109,7 @@ class CleanPage(BasePage):
         size_label = label("—", css="uc-label")
         row.add_suffix(size_label)
         switch = Gtk.Switch(valign=Gtk.Align.CENTER, active=category.default_enabled)
-        switch.set_tooltip_text(f"Sertakan {category.label} dalam pembersihan")
+        switch.set_tooltip_text(f"Include {category.label} in cleanup")
         switch.connect("notify::active", lambda *_: self._update_total())
         row.add_suffix(switch)
         self._groups[category.group].add(row)
@@ -125,28 +125,28 @@ class CleanPage(BasePage):
         bar.set_margin_start(18)
         bar.set_margin_end(18)
         text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=1, hexpand=True)
-        self._total_label = label("Belum ada hasil pindai", css="uc-metric-compact")
+        self._total_label = label("No scan results yet", css="uc-metric-compact")
         self._total_anim = AnimatedNumber(
             self,
             self._total_label,
-            formatter=lambda value: f"{format_bytes(value)} bisa dibebaskan",
+            formatter=lambda value: f"{format_bytes(value)} can be freed",
             duration=300,
         )
-        self._detail_label = label("Tekan Pindai ulang untuk menghitung ukuran.", css="uc-subtle")
+        self._detail_label = label("Press Scan again to calculate sizes.", css="uc-subtle")
         text.append(self._total_label)
         text.append(self._detail_label)
         bar.append(text)
 
         dry_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        dry_box.append(label("Pratinjau", css="uc-subtle"))
+        dry_box.append(label("Preview", css="uc-subtle"))
         self._dry_switch = Gtk.Switch(valign=Gtk.Align.CENTER)
-        self._dry_switch.set_tooltip_text("Tampilkan hasil tanpa mengubah apa pun")
+        self._dry_switch.set_tooltip_text("Show results without changing anything")
         self._dry_switch.connect("notify::active", lambda *_: self._update_total())
         dry_box.append(self._dry_switch)
         bar.append(dry_box)
 
         self._clean_content = Adw.ButtonContent(
-            icon_name="edit-delete-symbolic", label="Bersihkan"
+            icon_name="edit-delete-symbolic", label="Clean"
         )
         self._clean_button = button(suggested=True)
         self._clean_button.set_child(self._clean_content)
@@ -166,13 +166,13 @@ class CleanPage(BasePage):
             self.scan()
 
     def scan(self) -> None:
-        """Pindai semua kategori di thread pekerja."""
+        """Scan all categories on a worker thread."""
         if self._busy:
             return
         self._busy = True
         self._scan_button.set_sensitive(False)
         self._progress_card.set_visible(True)
-        self._progress_label.set_text("Memindai semua kategori…")
+        self._progress_label.set_text("Scanning all categories…")
         self._progress_bar.set_fraction(0.0)
         self._clean_button.set_sensitive(False)
         category_ids = [category.id for category in CATEGORIES]
@@ -192,20 +192,20 @@ class CleanPage(BasePage):
             self.services.last_previews = previews
             self._apply_previews(previews, animate=True)
             total = sum(preview.total_bytes for preview in previews.values())
-            self.window.toast(f"Pemindaian selesai · {format_bytes(total)} bisa dibebaskan")
+            self.window.toast(f"Scan complete · {format_bytes(total)} can be freed")
 
         def failed(exc: Exception) -> None:
             self._busy = False
             self._scan_button.set_sensitive(True)
             self._progress_card.set_visible(False)
-            self.window.toast(f"Pemindaian gagal: {exc}")
+            self.window.toast(f"Scan failed: {exc}")
 
         run_async(work, done, failed)
 
     def _on_progress(self, category_id: str, done: int, total: int) -> None:
         category = CATEGORY_MAP.get(category_id)
         label_text = category.label if category else category_id
-        self._progress_label.set_text(f"Memindai {done}/{total} · {label_text}")
+        self._progress_label.set_text(f"Scanning {done}/{total} · {label_text}")
         self._progress_bar.set_fraction(done / total if total else 0.0)
         return False
 
@@ -232,10 +232,10 @@ class CleanPage(BasePage):
             switch.set_sensitive(supported)
             if not supported and switch.get_active():
                 switch.set_active(False)
-            size_label.set_text(format_bytes(preview.total_bytes) if preview.supported else "Tidak tersedia")
+            size_label.set_text(format_bytes(preview.total_bytes) if preview.supported else "Unavailable")
             notes = list(preview.notes)
             for error in preview.errors:
-                notes.append(f"Gagal: {error}")
+                notes.append(f"Failed: {error}")
             for note in notes:
                 note_row = action_row(note)
                 note_row.add_prefix(icon("dialog-information-symbolic", 16, css="uc-nav-icon"))
@@ -252,7 +252,7 @@ class CleanPage(BasePage):
                 added.append(item_row)
             if len(preview.items) > MAX_DETAIL_ROWS:
                 more = action_row(
-                    f"… dan {len(preview.items) - MAX_DETAIL_ROWS} item lainnya"
+                    f"… and {len(preview.items) - MAX_DETAIL_ROWS} more items"
                 )
                 more.set_activatable(False)
                 row.add_row(more)
@@ -263,7 +263,7 @@ class CleanPage(BasePage):
             elif preview.supported:
                 row.set_subtitle(f"{preview.item_count} item")
             else:
-                row.set_subtitle(preview.errors[0] if preview.errors else "Tidak tersedia")
+                row.set_subtitle(preview.errors[0] if preview.errors else "Unavailable")
         for category_id, switch in self._switches.items():
             if category_id not in previews:
                 if switch.get_active():
@@ -284,21 +284,21 @@ class CleanPage(BasePage):
         total = sum(preview.total_bytes for preview in selected.values())
         items = sum(preview.item_count for preview in selected.values())
         if not selected:
-            self._total_label.set_text("Belum ada item dipilih")
-            self._detail_label.set_text("Aktifkan kategori untuk mulai membersihkan.")
+            self._total_label.set_text("No items selected yet")
+            self._detail_label.set_text("Enable categories to start cleaning.")
         else:
             if animate:
                 self._total_anim.set_value(total)
             else:
-                self._total_label.set_text(f"{format_bytes(total)} bisa dibebaskan")
+                self._total_label.set_text(f"{format_bytes(total)} can be freed")
             self._detail_label.set_text(
-                f"{len(selected)} kategori · {format_count(items)} item · "
-                f"{'pratinjau tanpa perubahan' if self._dry_switch.get_active() else 'item aman masuk karantina'}"
+                f"{len(selected)} categories · {format_count(items)} item · "
+                f"{'preview without changes' if self._dry_switch.get_active() else 'items safely moved to quarantine'}"
             )
         self._clean_button.set_sensitive(bool(selected) and not self._busy)
-        label_text = f"Bersihkan {format_bytes(total)}" if selected and total else "Bersihkan"
+        label_text = f"Clean {format_bytes(total)}" if selected and total else "Clean"
         if self._dry_switch.get_active():
-            label_text = "Pratinjau hasil"
+            label_text = "Preview results"
         self._clean_content.set_label(label_text)
 
     def _confirm_clean(self) -> None:
@@ -308,19 +308,19 @@ class CleanPage(BasePage):
         total = sum(preview.total_bytes for preview in selected.values())
         dry_run = self._dry_switch.get_active()
         body = (
-            f"{format_bytes(total)} dari {len(selected)} kategori akan diproses. "
-            "Item dari kategori pengguna dipindahkan ke karantina dan bisa dipulihkan."
+            f"{format_bytes(total)} from {len(selected)} categories will be processed. "
+            "Items from user categories are moved to quarantine and can be restored."
         )
         if dry_run:
             body = (
-                "Mode pratinjau aktif: tidak ada file yang dihapus. "
-                f"UbuClean akan menampilkan hasil untuk {format_bytes(total)}."
+                "Preview mode is active: no files are deleted. "
+                f"UbuClean will show results for {format_bytes(total)}."
             )
         ask_confirm(
             self,
-            heading="Jalankan pratinjau?" if dry_run else f"Bersihkan {format_bytes(total)}?",
+            heading="Run preview?" if dry_run else f"Clean {format_bytes(total)}?",
             body=body,
-            confirm_label="Jalankan pratinjau" if dry_run else "Bersihkan sekarang",
+            confirm_label="Run preview" if dry_run else "Clean now",
             destructive=not dry_run,
             on_confirm=lambda: self._run_clean(selected, dry_run),
         )
@@ -330,7 +330,7 @@ class CleanPage(BasePage):
         self._clean_button.set_sensitive(False)
         self._scan_button.set_sensitive(False)
         self._progress_card.set_visible(True)
-        self._progress_label.set_text("Membersihkan…")
+        self._progress_label.set_text("Cleaning…")
         self._progress_bar.set_pulse_step(0.15)
         self._progress_bar.pulse()
 
@@ -357,8 +357,8 @@ class CleanPage(BasePage):
                 self._mark_cleaned(selected)
             quarantined = any(outcome.quarantine_id for outcome in report.outcomes)
             self.window.toast(
-                f"{'Pratinjau' if dry_run else 'Selesai'} · {format_bytes(report.freed_bytes)}",
-                action_label="Urungkan" if quarantined and not dry_run else None,
+                f"{'Preview' if dry_run else 'Done'} · {format_bytes(report.freed_bytes)}",
+                action_label="Undo" if quarantined and not dry_run else None,
                 action=(lambda: self._undo(report)) if quarantined and not dry_run else None,
                 timeout=6,
             )
@@ -369,7 +369,7 @@ class CleanPage(BasePage):
             self._scan_button.set_sensitive(True)
             self._progress_card.set_visible(False)
             self._update_total()
-            self.window.toast(f"Pembersihan gagal: {exc}")
+            self.window.toast(f"Cleanup failed: {exc}")
 
         run_async(work, done, failed)
 
@@ -387,7 +387,7 @@ class CleanPage(BasePage):
             if row is None or switch is None:
                 continue
             self._clear_expander(category_id)
-            done_row = Adw.ActionRow(title="Sudah dibersihkan")
+            done_row = Adw.ActionRow(title="Cleaned")
             done_row.add_prefix(icon("object-select-symbolic", 16, css="uc-success-text"))
             done_row.set_activatable(False)
             row.add_row(done_row)
@@ -427,25 +427,25 @@ class CleanPage(BasePage):
                     HistoryEntry(
                         action="restore",
                         category="quarantine",
-                        label="Urungkan pembersihan",
+                        label="Undo cleanup",
                         items=restored,
                         bytes=restored_bytes,
                         ok=failed == 0,
-                        detail=f"{restored} item dipulihkan, {failed} gagal.",
+                        detail=f"{restored} items restored, {failed} failed.",
                         errors=errors,
                     )
                 )
             except OSError:
                 pass
             self.window.toast(
-                f"{restored} item dipulihkan dari karantina"
+                f"{restored} items restored from quarantine"
                 if not errors
-                else f"Sebagian gagal dipulihkan: {errors[0]}"
+                else f"Some items failed to restore: {errors[0]}"
             )
             if restored:
                 self.scan()
 
-        run_async(work, done, lambda exc: self.window.toast(f"Pemulihan gagal: {exc}"))
+        run_async(work, done, lambda exc: self.window.toast(f"Restore failed: {exc}"))
 
     def _open_uninstaller(self) -> None:
         from ubuclean.ui.pages.uninstaller import show_uninstaller
@@ -463,20 +463,20 @@ def show_clean_result(
     on_history: Any,
     on_rescan: Any,
 ) -> None:
-    """Dialog hasil yang menampilkan rincian dan aksi lanjutan."""
+    """Result dialog showing details and follow-up actions."""
     dialog = Adw.Dialog()
-    dialog.set_title("Hasil pembersihan" if not dry_run else "Pratinjau pembersihan")
+    dialog.set_title("Cleanup results" if not dry_run else "Cleanup preview")
     dialog.set_content_width(560)
     dialog.set_content_height(660)
     toolbar = Adw.ToolbarView()
     header = Adw.HeaderBar()
     header.set_title_widget(
         Adw.WindowTitle(
-            title="Hasil pembersihan" if not dry_run else "Pratinjau pembersihan",
+            title="Cleanup results" if not dry_run else "Cleanup preview",
             subtitle=format_date(time.time(), with_time=True),
         )
     )
-    close_button = icon_button("window-close-symbolic", "Tutup")
+    close_button = icon_button("window-close-symbolic", "Close")
     close_button.connect("clicked", lambda *_: dialog.close())
     header.pack_end(close_button)
     toolbar.add_top_bar(header)
@@ -499,9 +499,9 @@ def show_clean_result(
     hero.append(big)
     hero.append(
         label(
-            "Berhasil dibebaskan"
+            "Successfully freed"
             if not dry_run
-            else "Pratinjau: tidak ada perubahan pada sistem",
+            else "Preview: no changes made to the system",
             css="uc-subtle",
         )
     )
@@ -509,14 +509,14 @@ def show_clean_result(
     if quarantined and not dry_run:
         hero.append(
             label(
-                f"{format_bytes(quarantined)} dipindahkan ke karantina dan bisa dipulihkan.",
+                f"{format_bytes(quarantined)} moved to quarantine and can be restored.",
                 css="uc-subtle",
                 wrap=True,
             )
         )
     content.append(hero)
 
-    details = Adw.PreferencesGroup(title="Rincian per kategori")
+    details = Adw.PreferencesGroup(title="Details by category")
     for outcome in report.outcomes:
         category = CATEGORY_MAP.get(outcome.category_id)
         title = category.label if category else outcome.category_id
@@ -524,8 +524,8 @@ def show_clean_result(
             title=title,
             subtitle=(
                 f"{outcome.removed} item"
-                + (f" · {outcome.failed} gagal" if outcome.failed else "")
-                + (f" · {format_bytes(outcome.quarantined_bytes)} di karantina" if outcome.quarantined else "")
+                + (f" · {outcome.failed} failed" if outcome.failed else "")
+                + (f" · {format_bytes(outcome.quarantined_bytes)} in quarantine" if outcome.quarantined else "")
             ),
         )
         if outcome.ok:
@@ -539,7 +539,7 @@ def show_clean_result(
     content.append(details)
 
     if report.errors:
-        error_group = Adw.PreferencesGroup(title="Catatan")
+        error_group = Adw.PreferencesGroup(title="Notes")
         for error in report.errors[:8]:
             row = Adw.ActionRow(title=error)
             row.set_activatable(False)
@@ -548,17 +548,17 @@ def show_clean_result(
 
     actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
     actions.set_halign(Gtk.Align.END)
-    history_button = button("Lihat riwayat")
+    history_button = button("View history")
     history_button.connect("clicked", lambda *_: (dialog.close(), on_history()))
     actions.append(history_button)
     if quarantined and not dry_run:
-        undo_button = button("Urungkan", icon_name="edit-undo-symbolic")
+        undo_button = button("Undo", icon_name="edit-undo-symbolic")
         undo_button.connect("clicked", lambda *_: (dialog.close(), on_undo()))
         actions.append(undo_button)
-    rescan_button = button("Pindai ulang", icon_name="view-refresh-symbolic")
+    rescan_button = button("Scan again", icon_name="view-refresh-symbolic")
     rescan_button.connect("clicked", lambda *_: (dialog.close(), on_rescan()))
     actions.append(rescan_button)
-    close = button("Selesai", suggested=True)
+    close = button("Done", suggested=True)
     close.connect("clicked", lambda *_: dialog.close())
     actions.append(close)
     content.append(actions)

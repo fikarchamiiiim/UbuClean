@@ -1,4 +1,4 @@
-"""Statistik memori dan operasi pembersihan cache RAM."""
+"""Memory statistics and RAM cache cleaning operations."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ SWAP_RATIO = 1.15
 
 @dataclass(frozen=True, slots=True)
 class MemoryStats:
-    """Cuplikan penggunaan RAM, cache, dan swap."""
+    """A sample of RAM, cache, and swap usage."""
 
     total: int
     available: int
@@ -32,11 +32,11 @@ class MemoryStats:
 
     @property
     def reclaimable(self) -> int:
-        """Cache + buffer yang bisa dibebaskan."""
+        """Cache + buffers that can be freed."""
         return max(0, self.cached + self.buffers)
 
     def as_dict(self) -> dict[str, float | int]:
-        """Representasi JSON-able untuk CLI/UI."""
+        """JSON-able representation for the CLI/UI."""
         return {
             "total": self.total,
             "available": self.available,
@@ -52,7 +52,7 @@ class MemoryStats:
 
 
 def collect_memory_stats() -> MemoryStats:
-    """Baca statistik memori dari psutil."""
+    """Read memory statistics from psutil."""
     import psutil
 
     memory = psutil.virtual_memory()
@@ -74,7 +74,7 @@ def collect_memory_stats() -> MemoryStats:
 
 @dataclass(frozen=True, slots=True)
 class SwapEligibility:
-    """Hasil pemeriksaan kelayakan ``swapoff -a``."""
+    """Result of the ``swapoff -a`` eligibility check."""
 
     can_refresh: bool
     swap_used: int
@@ -85,7 +85,7 @@ class SwapEligibility:
 
 @dataclass(slots=True)
 class RamOutcome:
-    """Hasil aksi drop caches atau swap refresh."""
+    """Result of a drop caches or swap refresh action."""
 
     ok: bool
     before: MemoryStats
@@ -96,7 +96,7 @@ class RamOutcome:
     dry_run: bool = False
 
     def as_dict(self) -> dict[str, object]:
-        """Representasi JSON-able."""
+        """JSON-able representation."""
         return {
             "ok": self.ok,
             "dry_run": self.dry_run,
@@ -109,7 +109,7 @@ class RamOutcome:
 
 
 def read_meminfo(path: Path | None = None) -> dict[str, int]:
-    """Baca nilai kB dari /proc/meminfo."""
+    """Read the kB values from /proc/meminfo."""
     target = path or MEMINFO
     values: dict[str, int] = {}
     try:
@@ -131,18 +131,18 @@ def read_meminfo(path: Path | None = None) -> dict[str, int]:
 
 
 def check_swap_eligibility(meminfo_path: Path | None = None) -> SwapEligibility:
-    """Periksa apakah RAM bebas cukup menampung seluruh isi swap."""
+    """Check whether free RAM is enough to hold the whole contents of swap."""
     info = read_meminfo(meminfo_path)
     available = info.get("MemAvailable", 0) * 1024
     swap_total = info.get("SwapTotal", 0) * 1024
     swap_free = info.get("SwapFree", 0) * 1024
     swap_used = max(0, swap_total - swap_free)
     if not info:
-        return SwapEligibility(False, swap_used, available, 0, "Tidak bisa membaca /proc/meminfo.")
+        return SwapEligibility(False, swap_used, available, 0, "Cannot read /proc/meminfo.")
     if swap_total == 0:
-        return SwapEligibility(False, 0, available, 0, "Swap tidak tersedia di sistem ini.")
+        return SwapEligibility(False, 0, available, 0, "Swap is not available on this system.")
     if swap_used == 0:
-        return SwapEligibility(False, 0, available, 0, "Swap tidak sedang dipakai.")
+        return SwapEligibility(False, 0, available, 0, "Swap is not currently in use.")
     required = int(swap_used * SWAP_RATIO) + SWAP_MARGIN_KB * 1024
     if available < required:
         return SwapEligibility(
@@ -150,19 +150,19 @@ def check_swap_eligibility(meminfo_path: Path | None = None) -> SwapEligibility:
             swap_used,
             available,
             required,
-            "RAM bebas tidak cukup untuk menampung isi swap. Tutup beberapa aplikasi lalu coba lagi.",
+            "Free RAM is not enough to hold the contents of swap. Close a few applications and try again.",
         )
     return SwapEligibility(
         True,
         swap_used,
         available,
         required,
-        "RAM bebas cukup untuk menyegarkan swap.",
+        "Free RAM is enough to refresh swap.",
     )
 
 
 class RamService:
-    """Aksi memori yang memakai helper root untuk drop caches/swap."""
+    """Memory actions that use the root helper for drop caches/swap."""
 
     def __init__(
         self,
@@ -176,11 +176,11 @@ class RamService:
         self._meminfo_path = meminfo_path
 
     def stats(self) -> MemoryStats:
-        """Statistik memori saat ini."""
+        """Current memory statistics."""
         return self._stats()
 
     def swap_eligibility(self) -> SwapEligibility:
-        """Cek kelayakan swap refresh."""
+        """Check eligibility for a swap refresh."""
         return check_swap_eligibility(self._meminfo_path)
 
     def _log(self, action: str, label: str, bytes_freed: int, ok: bool, detail: str, errors: list[str]) -> None:
@@ -200,7 +200,7 @@ class RamService:
             pass
 
     def drop_caches(self, level: int = 2) -> RamOutcome:
-        """Sync lalu buang cache kernel pada level yang dipilih."""
+        """Sync, then drop the kernel cache at the selected level."""
         level = max(1, min(3, int(level)))
         before = self.stats()
         if self.ctx.dry_run:
@@ -208,15 +208,15 @@ class RamService:
                 ok=True,
                 before=before,
                 after=before,
-                detail=f"Pratinjau: drop_caches level {level} tidak dijalankan.",
+                detail=f"Preview: drop_caches level {level} was not run.",
                 dry_run=True,
             )
-            self._log("ram", "Pratinjau drop caches", 0, True, outcome.detail, [])
+            self._log("ram", "Preview drop caches", 0, True, outcome.detail, [])
             return outcome
         try:
             self.ctx.privileged.run(["drop-caches", str(level)], timeout=180)
         except PrivilegedError as exc:
-            outcome = RamOutcome(False, before, before, errors=[str(exc)], detail="Drop caches gagal.")
+            outcome = RamOutcome(False, before, before, errors=[str(exc)], detail="Drop caches failed.")
             self._log("ram", "Drop caches", 0, False, outcome.detail, outcome.errors)
             return outcome
         after = self.stats()
@@ -226,13 +226,13 @@ class RamService:
             before=before,
             after=after,
             freed_bytes=freed,
-            detail=f"Cache kernel dibuang (level {level}).",
+            detail=f"Kernel cache dropped (level {level}).",
         )
         self._log("ram", f"Drop caches level {level}", freed, True, outcome.detail, [])
         return outcome
 
     def swap_refresh(self) -> RamOutcome:
-        """Segarkan swap hanya jika RAM tersedia mencukupi."""
+        """Refresh swap only when the available RAM is sufficient."""
         before = self.stats()
         eligibility = self.swap_eligibility()
         if not eligibility.can_refresh:
@@ -241,19 +241,19 @@ class RamService:
                 before=before,
                 after=before,
                 errors=[eligibility.message],
-                detail="Swap tidak disegarkan.",
+                detail="Swap was not refreshed.",
             )
-            self._log("swap", "Segarkan swap", 0, False, outcome.detail, outcome.errors)
+            self._log("swap", "Refresh swap", 0, False, outcome.detail, outcome.errors)
             return outcome
         if self.ctx.dry_run:
             outcome = RamOutcome(
                 ok=True,
                 before=before,
                 after=before,
-                detail="Pratinjau: swap tidak disegarkan.",
+                detail="Preview: swap was not refreshed.",
                 dry_run=True,
             )
-            self._log("swap", "Pratinjau segarkan swap", 0, True, outcome.detail, [])
+            self._log("swap", "Preview refresh swap", 0, True, outcome.detail, [])
             return outcome
         try:
             self.ctx.privileged.run(["swap-refresh"], timeout=1200)
@@ -263,9 +263,9 @@ class RamService:
                 before=before,
                 after=self.stats(),
                 errors=[str(exc)],
-                detail="Segarkan swap gagal.",
+                detail="Swap refresh failed.",
             )
-            self._log("swap", "Segarkan swap", 0, False, outcome.detail, outcome.errors)
+            self._log("swap", "Refresh swap", 0, False, outcome.detail, outcome.errors)
             return outcome
         after = self.stats()
         freed = max(0, before.swap_used - after.swap_used)
@@ -274,12 +274,12 @@ class RamService:
             before=before,
             after=after,
             freed_bytes=freed,
-            detail="Swap disegarkan.",
+            detail="Swap refreshed.",
         )
-        self._log("swap", "Segarkan swap", freed, True, outcome.detail, [])
+        self._log("swap", "Refresh swap", freed, True, outcome.detail, [])
         return outcome
 
 
 def now_seconds() -> float:
-    """Waktu sekarang (dipakai UI untuk animasi/cooldown)."""
+    """Current time (used by the UI for animations/cooldowns)."""
     return time.time()

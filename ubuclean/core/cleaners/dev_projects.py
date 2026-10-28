@@ -1,4 +1,4 @@
-"""Cleaner folder proyek lama (node_modules, __pycache__, target, .venv)."""
+"""Stale project folder cleaner (node_modules, __pycache__, target, .venv)."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ MAX_ITEMS = 150
 
 
 def expand_roots(values: list[str], home: Path) -> list[Path]:
-    """Expanded folder induk dari konfigurasi (``~`` mengikuti home pengguna)."""
+    """Expanded parent folders from the configuration (``~`` follows the user's home)."""
     roots: list[Path] = []
     for value in values:
         text = value.strip()
@@ -42,7 +42,7 @@ def expand_roots(values: list[str], home: Path) -> list[Path]:
 
 
 class DevProjectsCleaner(BaseCleaner):
-    """Menemukan folder artefak build pada proyek yang lama tidak disentuh."""
+    """Finds build artifact folders in projects that have not been touched for a long time."""
 
     category = get_category("dev-projects")
 
@@ -69,7 +69,7 @@ class DevProjectsCleaner(BaseCleaner):
         return expand_roots(values, home)
 
     def scan(self, ctx: Context) -> Preview:
-        """Telusuri folder induk dan kumpulkan marker build yang lama."""
+        """Walk the parent folders and collect stale build markers."""
         home = (self._home or ctx.paths.home).resolve()
         days = self._days_value(ctx)
         cutoff = time.time() - days * 86400
@@ -116,7 +116,7 @@ class DevProjectsCleaner(BaseCleaner):
                                 id=str(resolved),
                                 label=str(resolved).replace(str(home), "~"),
                                 size=path_size(resolved),
-                                detail=f"Proyek tidak diubah sejak {days} hari",
+                                detail=f"Project unchanged for {days} days",
                                 path=resolved,
                             )
                         )
@@ -127,20 +127,20 @@ class DevProjectsCleaner(BaseCleaner):
                 dirnames[:] = kept
         items.sort(key=lambda item: item.size, reverse=True)
         notes = [
-            f"Memeriksa {len(roots)} folder induk; hanya marker build yang lebih tua dari {days} hari.",
-            "Folder dipindahkan ke karantina UbuClean.",
+            f"Scanned {len(roots)} parent folders; only build markers older than {days} days.",
+            "Folders are moved to the UbuClean quarantine.",
         ]
         if not roots:
             notes.append(
-                "Belum ada folder induk yang valid. Pilih folder proyek di Pengaturan atau pembersih developer."
+                "No valid parent folders yet. Choose project folders in Settings or in the developer cleaner."
             )
         if errors:
-            notes.append(f"{errors} folder tidak dapat diperiksa.")
+            notes.append(f"{errors} folders could not be inspected.")
         if scanned_dirs:
-            notes.append(f"{scanned_dirs} folder diperiksa.")
+            notes.append(f"{scanned_dirs} folders inspected.")
         return self.new_preview(items=items, notes=notes)
 
     def clean(self, ctx: Context, preview: Preview) -> CleanOutcome:
-        """Karantina marker build yang dipilih."""
+        """Quarantine the selected build markers."""
         paths = [item.path for item in preview.items if item.path is not None]
         return self.remove_paths(ctx, paths)

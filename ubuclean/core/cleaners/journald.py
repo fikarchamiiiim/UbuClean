@@ -1,4 +1,4 @@
-"""Cleaner log journald lama."""
+"""Cleaner for old journald logs."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from ubuclean.core.util import parse_human_size
 
 
 class JournalCleaner(BaseCleaner):
-    """Vakum journald berdasarkan batas hari."""
+    """Vacuum journald based on a day limit."""
 
     category = get_category("journal")
 
@@ -29,37 +29,37 @@ class JournalCleaner(BaseCleaner):
         return 0
 
     def scan(self, ctx: Context) -> Preview:
-        """Tampilkan pemakaian journal saat ini sebagai batas atas."""
+        """Show the current journal usage as an upper bound."""
         if ctx.runner.which("journalctl") is None:
             return self.new_preview(
                 supported=False,
-                notes=["journalctl tidak tersedia di sistem ini."],
+                notes=["journalctl is unavailable on this system."],
             )
         days = self._days(ctx)
         usage = self._usage(ctx)
         items = [
             PreviewItem(
                 id="journal",
-                label=f"Log journald lebih lama dari {days} hari",
+                label=f"journald logs older than {days} days",
                 size=usage,
-                detail="Perkiraan batas atas; ukuran sebenarnya dihitung saat pembersihan",
+                detail="Estimated upper bound; the actual size is measured during cleaning",
             )
         ]
         notes = [
-            "Dihapus langsung dengan journalctl --vacuum-time; tidak masuk karantina.",
-            f"Ukuran di atas adalah total journal saat ini, bukan hanya log lama.",
+            "Deleted directly with journalctl --vacuum-time; not quarantined.",
+            f"The size above is the current journal total, not only the old logs.",
         ]
         commands = [ctx.privileged.describe(["journal-vacuum", f"{days}d"])]
         return self.new_preview(items=items, notes=notes, commands=commands)
 
     def clean(self, ctx: Context, preview: Preview) -> CleanOutcome:
-        """Jalankan vacuum journald melalui helper."""
+        """Run the journald vacuum through the helper."""
         days = self._days(ctx)
         if ctx.dry_run:
             return CleanOutcome(
                 category_id=self.category.id,
                 freed_bytes=preview.total_bytes,
                 removed=1,
-                detail="Pratinjau: journalctl --vacuum-time tidak dijalankan.",
+                detail="Preview: journalctl --vacuum-time was not run.",
             )
         return self.helper_clean(ctx, ["journal-vacuum", f"{days}d"], timeout=600)

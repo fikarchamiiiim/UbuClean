@@ -1,4 +1,4 @@
-"""Cleaner cache browser (opsional, tidak dicentang secara default)."""
+"""Browser cache cleaner (optional, unchecked by default)."""
 
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ BROWSER_LABELS = {
 
 
 def running_browser_names() -> list[str]:
-    """Nama proses browser yang sedang berjalan (best-effort)."""
+    """Names of browser processes that are currently running (best-effort)."""
     try:
         import psutil
     except ImportError:
@@ -40,12 +40,12 @@ def running_browser_names() -> list[str]:
 
 
 class BrowserCacheCleaner(BaseCleaner):
-    """Membersihkan cache browser tanpa menyentuh profil pengguna."""
+    """Cleans browser caches without touching user profiles."""
 
     category = get_category("browser-cache")
 
     def scan(self, ctx: Context) -> Preview:
-        """Daftar direktori cache browser yang ada."""
+        """List the browser cache directories that exist."""
         cache = ctx.paths.cache_dir
         items: list[PreviewItem] = []
         for relative in BROWSER_CACHE_RELATIVE:
@@ -62,19 +62,19 @@ class BrowserCacheCleaner(BaseCleaner):
                 )
             )
         notes = [
-            "Hanya folder cache yang dihapus; profil, bookmark, dan riwayat tetap utuh.",
-            "Kategori ini tidak pernah ikut pembersihan terjadwal.",
+            "Only cache folders are deleted; profiles, bookmarks, and history stay intact.",
+            "This category never takes part in scheduled cleaning.",
         ]
         running = running_browser_names()
         if running:
             notes.append(
-                "Browser sedang berjalan (" + ", ".join(running) + "); tutup browser agar pembersihan optimal."
+                "A browser is running (" + ", ".join(running) + "); close the browser for optimal cleaning."
             )
         if not items:
-            notes.append("Tidak ada cache browser yang ditemukan.")
+            notes.append("No browser caches found.")
         return self.new_preview(items=items, notes=notes)
 
     def clean(self, ctx: Context, preview: Preview) -> CleanOutcome:
-        """Karantina folder cache browser."""
+        """Quarantine the browser cache folders."""
         paths = [item.path for item in preview.items if item.path is not None]
         return self.remove_paths(ctx, paths)

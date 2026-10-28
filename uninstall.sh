@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Penghapus pemasangan UbuClean.
+# UbuClean uninstaller.
 set -euo pipefail
 
 PURGE=0
@@ -8,23 +8,23 @@ for arg in "$@"; do
     --purge) PURGE=1 ;;
     -h|--help)
       cat <<'EOF'
-Penggunaan: sudo ./uninstall.sh [--purge]
+Usage: sudo ./uninstall.sh [--purge]
 
-  --purge  Hapus juga konfigurasi, log, dan karantina pengguna.
-           Tanpa flag ini, data pengguna dipertahankan.
+  --purge  Also delete the user's configuration, logs, and quarantine.
+           Without this flag, user data is preserved.
 EOF
       exit 0
       ;;
-    *) echo "Argumen tidak dikenal: $arg" >&2; exit 2 ;;
+    *) echo "Unknown argument: $arg" >&2; exit 2 ;;
   esac
 done
 
 if [[ "${EUID}" -ne 0 ]]; then
-  echo "Jalankan dengan sudo: sudo ./uninstall.sh" >&2
+  echo "Run with sudo: sudo ./uninstall.sh" >&2
   exit 1
 fi
 
-echo "==> Menonaktifkan unit jadwal pengguna (jika ada)"
+echo "==> Disabling user schedule units (if present)"
 TARGET_HOME=""
 if [[ -n "${SUDO_USER:-}" ]]; then
   TARGET_HOME="$(getent passwd "$SUDO_USER" | cut -d: -f6 || true)"
@@ -40,7 +40,7 @@ if [[ -n "$TARGET_HOME" ]]; then
   fi
 fi
 
-echo "==> Menghapus berkas sistem"
+echo "==> Removing system files"
 rm -f /usr/bin/ubuclean /usr/bin/ubuclean-helper
 rm -rf /usr/lib/ubuclean
 rm -f /usr/share/applications/com.ubuclean.App.desktop
@@ -52,8 +52,8 @@ command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database /u
 command -v gtk-update-icon-cache >/dev/null 2>&1 && gtk-update-icon-cache -q /usr/share/icons/hicolor || true
 
 if [[ "$PURGE" -eq 0 ]]; then
-  echo "Data pengguna (konfigurasi, log, karantina) dipertahankan. Gunakan --purge untuk menghapus."
+  echo "User data (configuration, logs, quarantine) preserved. Use --purge to delete it."
 else
-  echo "Data pengguna juga dihapus."
+  echo "User data deleted as well."
 fi
-echo "Selesai. Jalankan 'systemctl --user daemon-reload' sebagai pengguna jika perlu."
+echo "Done. Run 'systemctl --user daemon-reload' as the user if needed."

@@ -1,4 +1,4 @@
-"""Layanan bersama yang dibuat sekali per aplikasi."""
+"""Shared services created once per application."""
 
 from __future__ import annotations
 
@@ -15,10 +15,10 @@ from ubuclean.core.uninstaller import UninstallerService
 
 
 class Services:
-    """Kumpulan service core yang dipakai halaman UI.
+    """Collection of core services used by the UI pages.
 
-    Semua operasi berat tetap dijalankan oleh pemanggil melalui thread
-    pekerja; kelas ini hanya menyimpan state sesi.
+    All heavy operations are still run by the caller through worker threads;
+    this class only holds session state.
     """
 
     def __init__(self) -> None:
@@ -39,12 +39,12 @@ class Services:
         self.last_report: CleanReport | None = None
 
     def save_config(self) -> None:
-        """Simpan konfigurasi pengguna."""
+        """Save the user configuration."""
         try:
             self.config.save()
         except OSError:
             pass
 
     def purge_expired_quarantine(self) -> list[str]:
-        """Hapus karantina kedaluwarsa (dipanggil dari thread latar)."""
+        """Delete expired quarantine entries (called from a background thread)."""
         return self.context.quarantine.purge_expired()

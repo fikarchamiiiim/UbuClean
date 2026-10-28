@@ -180,7 +180,7 @@ def test_tmp_scan_filters_old_and_in_use(context: Context, fake_runner) -> None:
     fake_runner.responses["fuser"] = CommandResult(argv=("fuser",), returncode=0)
     preview = TmpCleaner(tmp_dir=tmp).scan(context)
     assert preview.items == []
-    assert any("dipakai" in note for note in preview.notes)
+    assert any("in use" in note for note in preview.notes)
 
     fake_runner.responses["fuser"] = CommandResult(argv=("fuser",), returncode=1)
     preview = TmpCleaner(tmp_dir=tmp).scan(context)
@@ -213,7 +213,7 @@ def test_tmp_clean_auth_cancelled(context: Context, fake_runner) -> None:
     preview = Preview(category_id="tmp", token="x")
     outcome = cleaner.clean(context, preview)
     assert outcome.failed == 1
-    assert "dibatalkan" in outcome.errors[0].lower()
+    assert "cancelled" in outcome.errors[0].lower()
 
 
 def test_clean_report_aggregates(context: Context) -> None:

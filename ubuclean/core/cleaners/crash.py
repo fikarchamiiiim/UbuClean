@@ -1,4 +1,4 @@
-"""Cleaner laporan crash di /var/crash."""
+"""Cleaner for crash reports in /var/crash."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ CRASH_DIR = Path("/var/crash")
 
 
 class CrashCleaner(BaseCleaner):
-    """Menghapus file laporan crash lama."""
+    """Deletes old crash report files."""
 
     category = get_category("crash")
 
@@ -22,9 +22,9 @@ class CrashCleaner(BaseCleaner):
         self.crash_dir = Path(crash_dir) if crash_dir else CRASH_DIR
 
     def scan(self, ctx: Context) -> Preview:
-        """Daftar file di /var/crash yang terlihat oleh pengguna."""
+        """List the files in /var/crash that are visible to the user."""
         if not self.crash_dir.is_dir():
-            return self.new_preview(notes=["Direktori /var/crash tidak ditemukan."])
+            return self.new_preview(notes=["/var/crash directory not found."])
         items: list[PreviewItem] = []
         denied = 0
         try:
@@ -32,7 +32,7 @@ class CrashCleaner(BaseCleaner):
         except OSError as exc:
             return self.new_preview(
                 supported=False,
-                errors=[f"Tidak bisa membaca /var/crash: {exc}"],
+                errors=[f"Cannot read /var/crash: {exc}"],
             )
         with entries:
             for entry in entries:
@@ -48,13 +48,13 @@ class CrashCleaner(BaseCleaner):
                         id=entry.name,
                         label=entry.name,
                         size=size,
-                        detail="Dihapus langsung (bukan karantina)",
+                        detail="Deleted directly (no quarantine)",
                     )
                 )
         items.sort(key=lambda item: item.size, reverse=True)
-        notes = ["Laporan crash dihapus langsung; tidak masuk karantina."]
+        notes = ["Crash reports are deleted directly; they are not quarantined."]
         if denied:
-            notes.append(f"{denied} laporan tidak bisa diperiksa karena izin ditolak.")
+            notes.append(f"{denied} reports could not be inspected because permission was denied.")
         commands = (
             [ctx.privileged.describe(["clean-crash", *[item.id for item in items]])]
             if items
@@ -63,15 +63,15 @@ class CrashCleaner(BaseCleaner):
         return self.new_preview(items=items, notes=notes, commands=commands)
 
     def clean(self, ctx: Context, preview: Preview) -> CleanOutcome:
-        """Hapus laporan crash yang terdaftar di preview."""
+        """Delete the crash reports listed in the preview."""
         names = [item.id for item in preview.items]
         if not names:
-            return CleanOutcome(category_id=self.category.id, detail="Tidak ada laporan crash.")
+            return CleanOutcome(category_id=self.category.id, detail="No crash reports.")
         if ctx.dry_run:
             return CleanOutcome(
                 category_id=self.category.id,
                 freed_bytes=preview.total_bytes,
                 removed=len(names),
-                detail="Pratinjau: laporan crash tidak dihapus.",
+                detail="Preview: crash reports were not deleted.",
             )
         return self.helper_clean(ctx, ["clean-crash", *names])

@@ -74,7 +74,7 @@ def test_sort_processes_by_cpu_and_memory() -> None:
 
 
 def test_critical_reason_blocks_init_and_self() -> None:
-    assert critical_reason(1, "systemd", "root", 0, current_uid=1000, current_pid=100) == "Proses init sistem"
+    assert critical_reason(1, "systemd", "root", 0, current_uid=1000, current_pid=100) == "System init process"
     assert critical_reason(100, "ubuclean", "engineer", 1000, current_uid=1000, current_pid=100)
 
 

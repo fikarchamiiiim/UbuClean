@@ -1,9 +1,9 @@
-"""Validasi path dan penghapusan aman.
+"""Path validation and safe removal.
 
-Semua penghapusan di UbuClean harus melewati :class:`SafetyPolicy` dan
-:func:`safe_remove`. Kebijakan ini sengaja konservatif: hanya direktori cache
-pengguna, Trash, karantina UbuClean, ``/tmp``, dan ``/var/crash`` yang boleh
-disentuh.
+Every removal in UbuClean must go through :class:`SafetyPolicy` and
+:func:`safe_remove`. The policy is deliberately conservative: only user cache
+directories, Trash, the UbuClean quarantine, ``/tmp``, and ``/var/crash`` may
+be touched.
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ from typing import Iterable, Iterator
 
 
 class UnsafePathError(ValueError):
-    """Dilempar ketika path berada di luar whitelist atau dilindungi."""
+    """Raised when a path is outside the whitelist or is protected."""
 
 
 HOME_PERSONAL_DIRS = (
@@ -62,7 +62,7 @@ DENIED_ABSOLUTE = (
 
 
 def _normalise(path: Path) -> Path:
-    """Resolve path secara longgar tanpa mewajibkan keberadaan file."""
+    """Resolve a path loosely without requiring the file to exist."""
     try:
         return Path(path).resolve(strict=False)
     except OSError:
@@ -71,7 +71,7 @@ def _normalise(path: Path) -> Path:
 
 @dataclass(frozen=True)
 class AppPaths:
-    """Lokasi direktori dan file milik UbuClean untuk satu pengguna."""
+    """Directory and file locations owned by UbuClean for one user."""
 
     home: Path
     config_dir: Path
@@ -84,7 +84,7 @@ class AppPaths:
 
     @classmethod
     def for_home(cls, home: Path) -> "AppPaths":
-        """Bangun himpunan path dari direktori home pengguna."""
+        """Build the path set from the user's home directory."""
         home = _normalise(home)
         config_dir = home / ".config/ubuclean"
         state_dir = home / ".local/state/ubuclean"
@@ -102,11 +102,11 @@ class AppPaths:
 
     @classmethod
     def default(cls) -> "AppPaths":
-        """Path untuk pengguna yang sedang menjalankan aplikasi."""
+        """Paths for the user currently running the application."""
         return cls.for_home(Path.home())
 
     def ensure_dirs(self) -> None:
-        """Buat direktori state/data/config dengan izin ketat."""
+        """Create the state/data/config directories with strict permissions."""
         for directory, mode in (
             (self.config_dir, 0o700),
             (self.state_dir, 0o700),
@@ -120,7 +120,7 @@ class AppPaths:
 
 @dataclass(frozen=True)
 class RemovalResult:
-    """Hasil satu operasi penghapusan path."""
+    """Result of a single path removal operation."""
 
     path: Path
     removed: bool = False
@@ -131,7 +131,7 @@ class RemovalResult:
 
 @dataclass(frozen=True)
 class SafetyPolicy:
-    """Whitelist path yang boleh dihapus."""
+    """Whitelist of paths that may be deleted."""
 
     home: Path
     extra_roots: tuple[Path, ...] = ()
@@ -142,12 +142,12 @@ class SafetyPolicy:
 
     @classmethod
     def for_home(cls, home: Path, extra_roots: Iterable[Path] = ()) -> "SafetyPolicy":
-        """Buat kebijakan untuk home tertentu (dipakai juga oleh tes)."""
+        """Create a policy for a specific home directory (also used by tests)."""
         return cls(home=home, extra_roots=tuple(extra_roots))
 
     @property
     def allowed_roots(self) -> tuple[Path, ...]:
-        """Direktori yang isinya boleh dihapus (bukan direktori itu sendiri)."""
+        """Directories whose contents may be deleted (not the directory itself)."""
         home = self.home
         roots = [
             home / ".cache",
@@ -160,40 +160,40 @@ class SafetyPolicy:
         return tuple(_normalise(root) for root in roots)
 
     def validate(self, path: Path | str) -> Path:
-        """Validasi ``path`` dan kembalikan path asli yang aman dihapus.
+        """Validate ``path`` and return the original path that is safe to delete.
 
-        Pemeriksaan memakai hasil resolve symlink, sedangkan penghapusan tetap
-        dilakukan pada path asli agar symlink tidak diikuti.
+        The checks use the symlink-resolved result, while the removal itself is
+        still performed on the original path so that symlinks are not followed.
         """
         raw = Path(path)
         if "\x00" in str(raw):
-            raise UnsafePathError("Path mengandung karakter NUL.")
+            raise UnsafePathError("Path contains a NUL character.")
         if not raw.is_absolute():
-            raise UnsafePathError(f"Path harus absolut: {raw}")
+            raise UnsafePathError(f"Path must be absolute: {raw}")
         resolved = _normalise(raw)
         if resolved == self.home:
-            raise UnsafePathError("Direktori home tidak boleh dihapus.")
+            raise UnsafePathError("The home directory cannot be deleted.")
         for name in HOME_PERSONAL_DIRS:
             protected = _normalise(self.home / name)
             if resolved == protected or protected in resolved.parents:
-                raise UnsafePathError(f"Data pribadi dilindungi: {raw}")
+                raise UnsafePathError(f"Personal data is protected: {raw}")
         for name in HOME_PROTECTED_DIRS:
             protected = _normalise(self.home / name)
             if resolved == protected or protected in resolved.parents:
-                raise UnsafePathError(f"Data konfigurasi dilindungi: {raw}")
+                raise UnsafePathError(f"Configuration data is protected: {raw}")
         for root in self.allowed_roots:
             if resolved == root:
-                raise UnsafePathError(f"Direktori induk tidak boleh dihapus: {raw}")
+                raise UnsafePathError(f"The parent directory cannot be deleted: {raw}")
         for root in self.allowed_roots:
             if root in resolved.parents:
                 return raw
         for denied in DENIED_ABSOLUTE:
             if resolved == denied or denied in resolved.parents:
-                raise UnsafePathError(f"Lokasi sistem dilindungi: {raw}")
-        raise UnsafePathError(f"Path di luar whitelist UbuClean: {raw}")
+                raise UnsafePathError(f"System location is protected: {raw}")
+        raise UnsafePathError(f"Path is outside the UbuClean whitelist: {raw}")
 
     def is_allowed(self, path: Path | str) -> bool:
-        """True bila path lolos validasi."""
+        """True when the path passes validation."""
         try:
             self.validate(path)
         except UnsafePathError:
@@ -202,7 +202,7 @@ class SafetyPolicy:
 
 
 def _lstat(path: Path) -> os.stat_result | None:
-    """lstat yang tidak melempar error untuk path hilang."""
+    """lstat that does not raise for missing paths."""
     try:
         return os.lstat(path)
     except FileNotFoundError:
@@ -212,7 +212,7 @@ def _lstat(path: Path) -> os.stat_result | None:
 
 
 def path_size(path: Path) -> int:
-    """Hitung ukuran file/direktori tanpa mengikuti symlink."""
+    """Compute the size of a file/directory without following symlinks."""
     stat_result = _lstat(path)
     if stat_result is None:
         return 0
@@ -240,7 +240,7 @@ def path_size(path: Path) -> int:
 
 
 def iter_files(root: Path, *, limit: int | None = None) -> Iterator[tuple[Path, int]]:
-    """Hasilkan ``(path, size)`` untuk file di dalam ``root`` tanpa symlink."""
+    """Yield ``(path, size)`` for files inside ``root``, skipping symlinks."""
     if limit is not None and limit <= 0:
         return
     count = 0
@@ -268,7 +268,7 @@ def iter_files(root: Path, *, limit: int | None = None) -> Iterator[tuple[Path, 
 
 
 def list_children(root: Path) -> list[tuple[Path, int]]:
-    """Daftar entri tingkat pertama beserta ukurannya, terbesar lebih dulu."""
+    """List first-level entries with their sizes, largest first."""
     entries: list[tuple[Path, int]] = []
     try:
         with os.scandir(root) as iterator:
@@ -289,10 +289,10 @@ def safe_remove(
     *,
     dry_run: bool = False,
 ) -> RemovalResult:
-    """Hapus satu path setelah divalidasi, tanpa menghentikan pemanggil.
+    """Delete a single path after validation, without stopping the caller.
 
-    Error izin, file yang sedang dipakai, atau filesystem read-only
-    dikembalikan sebagai :class:`RemovalResult` dengan ``error`` terisi.
+    Permission errors, files that are in use, or a read-only filesystem are
+    returned as a :class:`RemovalResult` with ``error`` filled in.
     """
     try:
         checked = policy.validate(path)
@@ -322,5 +322,5 @@ def safe_remove_many(
     *,
     dry_run: bool = False,
 ) -> list[RemovalResult]:
-    """Hapus banyak path; satu kegagalan tidak menghentikan sisanya."""
+    """Delete many paths; one failure does not stop the rest."""
     return [safe_remove(path, policy, dry_run=dry_run) for path in paths]

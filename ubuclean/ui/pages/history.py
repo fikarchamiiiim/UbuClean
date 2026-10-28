@@ -1,4 +1,4 @@
-"""Halaman Riwayat dan pemulihan karantina."""
+"""History page and quarantine restore."""
 
 from __future__ import annotations
 
@@ -30,10 +30,10 @@ from ubuclean.ui.pages.base import BasePage
 
 
 class HistoryPage(BasePage):
-    """Log aksi, daftar karantina, dan tombol Pulihkan per aksi."""
+    """Action log, quarantine list, and a Restore button per action."""
 
     def __init__(self, window: Any) -> None:
-        super().__init__("Riwayat", "Log pembersihan dan karantina yang bisa dipulihkan", maximum_width=900)
+        super().__init__("History", "Cleanup log and restorable quarantine", maximum_width=900)
         self.window = window
         self.services = window.services
         self._entries: list[HistoryEntry] = []
@@ -41,19 +41,19 @@ class HistoryPage(BasePage):
         self._quarantine_bytes = 0
         self._busy = False
 
-        refresh = icon_button("view-refresh-symbolic", "Muat ulang riwayat")
+        refresh = icon_button("view-refresh-symbolic", "Reload history")
         refresh.connect("clicked", lambda *_: self.refresh())
         self.add_action(refresh)
 
         self._summary = self._build_summary()
         self.body.append(self._summary)
         self._quarantine_group = Adw.PreferencesGroup(
-            title="Karantina",
-            description="Item dari kategori aman disimpan sementara sebelum dihapus permanen.",
+            title="Quarantine",
+            description="Items from safe categories are held temporarily before permanent deletion.",
         )
         self._history_group = Adw.PreferencesGroup(
-            title="Aksi terbaru",
-            description="Setiap aksi dicatat dengan waktu, kategori, ukuran, dan hasilnya.",
+            title="Recent actions",
+            description="Every action is recorded with its time, category, size, and result.",
         )
         self.body.append(self._quarantine_group)
         self.body.append(self._history_group)
@@ -69,7 +69,7 @@ class HistoryPage(BasePage):
         text.append(self._summary_detail)
         top.append(text)
         self._purge_button = button(
-            "Kosongkan karantina", icon_name="user-trash-symbolic", destructive=True
+            "Empty quarantine", icon_name="user-trash-symbolic", destructive=True
         )
         self._purge_button.set_valign(Gtk.Align.CENTER)
         self._purge_button.connect("clicked", lambda *_: self._confirm_purge())
@@ -99,7 +99,7 @@ class HistoryPage(BasePage):
 
         def failed(exc: Exception) -> None:
             self._busy = False
-            self.window.toast(f"Gagal memuat riwayat: {exc}")
+            self.window.toast(f"Failed to load history: {exc}")
 
         run_async(work, done, failed)
 
@@ -111,21 +111,21 @@ class HistoryPage(BasePage):
         retention = int(self.services.config.get("quarantine_days", 7))
         self._summary_value.set_text(format_bytes(self._quarantine_bytes))
         self._summary_detail.set_text(
-            f"{len(self._quarantine)} aksi karantina · retensi {retention} hari · "
-            "item yang kedaluwarsa dihapus otomatis saat aplikasi atau jadwal berjalan."
+            f"{len(self._quarantine)} quarantine actions · {retention} day retention · "
+            "expired items are deleted automatically when the app or a schedule runs."
         )
         self._purge_button.set_sensitive(bool(self._quarantine))
 
         self._clear_group(self._quarantine_group)
         if not self._quarantine:
-            self._quarantine_group.add(self._message_row("Karantina kosong."))
+            self._quarantine_group.add(self._message_row("Quarantine is empty."))
         else:
             for action in self._quarantine:
                 self._quarantine_group.add(self._quarantine_row(action))
 
         self._clear_group(self._history_group)
         if not self._entries:
-            self._history_group.add(self._message_row("Belum ada riwayat aksi."))
+            self._history_group.add(self._message_row("No action history yet."))
         else:
             for entry in self._entries:
                 self._history_group.add(self._history_row(entry))
@@ -148,7 +148,7 @@ class HistoryPage(BasePage):
             f"{date} · {format_count(len(action.items))} item · {format_bytes(action.total_bytes)}",
         )
         row.add_prefix(icon("user-trash-symbolic", 16, css="uc-nav-icon"))
-        restore = button("Pulihkan", icon_name="edit-undo-symbolic")
+        restore = button("Restore", icon_name="edit-undo-symbolic")
         restore.set_valign(Gtk.Align.CENTER)
         restore.connect("clicked", lambda *_: self._restore(action))
         row.add_suffix(restore)
@@ -158,9 +158,9 @@ class HistoryPage(BasePage):
 
     def _history_row(self, entry: HistoryEntry) -> Adw.ActionRow:
         timestamp = format_date(entry.ts, with_time=True)
-        status = "berhasil" if entry.ok else "gagal"
+        status = "succeeded" if entry.ok else "failed"
         if entry.dry_run:
-            status = "pratinjau"
+            status = "preview"
         detail = entry.detail or entry.action
         row = action_row(
             entry.label or self._category_label(entry.category),
@@ -187,12 +187,12 @@ class HistoryPage(BasePage):
         label_text = self._category_label(action.category_id)
         ask_confirm(
             self,
-            heading="Pulihkan item dari karantina?",
+            heading="Restore items from quarantine?",
             body=(
-                f"{len(action.items)} item ({format_bytes(action.total_bytes)}) akan dikembalikan "
-                "ke path aslinya. File yang sudah ada akan diberi nama baru."
+                f"{len(action.items)} items ({format_bytes(action.total_bytes)}) will be returned "
+                "to their original paths. Files that already exist will be renamed."
             ),
-            confirm_label="Pulihkan",
+            confirm_label="Restore",
             on_confirm=lambda: self._run_restore(action, label_text),
         )
 
@@ -208,34 +208,34 @@ class HistoryPage(BasePage):
                     HistoryEntry(
                         action="restore",
                         category=action.category_id,
-                        label=f"Pulihkan {label_text}",
+                        label=f"Restore {label_text}",
                         items=result.restored,
                         bytes=result.bytes,
                         ok=result.failed == 0,
-                        detail=f"{result.restored} item dipulihkan, {result.failed} gagal.",
+                        detail=f"{result.restored} items restored, {result.failed} failed.",
                         errors=list(result.errors),
                     )
                 )
             except OSError:
                 pass
             self.window.toast(
-                f"{result.restored} item dipulihkan"
+                f"{result.restored} items restored"
                 if not result.errors
-                else f"Pulihkan selesai dengan {result.failed} kegagalan"
+                else f"Restore finished with {result.failed} failures"
             )
             self.refresh()
 
-        run_async(work, done, lambda exc: self.window.toast(f"Pemulihan gagal: {exc}"))
+        run_async(work, done, lambda exc: self.window.toast(f"Restore failed: {exc}"))
 
     def _confirm_purge(self) -> None:
         ask_confirm(
             self,
-            heading="Kosongkan karantina?",
+            heading="Empty quarantine?",
             body=(
-                "Semua item di karantina akan dihapus permanen dan tidak bisa dipulihkan. "
-                "Riwayat aksi tetap disimpan."
+                "All quarantined items will be permanently deleted and cannot be restored. "
+                "The action history is kept."
             ),
-            confirm_label="Hapus permanen",
+            confirm_label="Delete permanently",
             destructive=True,
             on_confirm=self._run_purge,
         )
@@ -252,16 +252,16 @@ class HistoryPage(BasePage):
                     HistoryEntry(
                         action="purge",
                         category="quarantine",
-                        label="Karantina dikosongkan",
+                        label="Quarantine emptied",
                         items=len(removed),
                         bytes=total,
                         ok=True,
-                        detail=f"{len(removed)} aksi karantina dihapus permanen.",
+                        detail=f"{len(removed)} quarantine actions permanently deleted.",
                     )
                 )
             except OSError:
                 pass
-            self.window.toast(f"{len(removed)} aksi karantina dihapus permanen")
+            self.window.toast(f"{len(removed)} quarantine actions permanently deleted")
             self.refresh()
 
-        run_async(work, done, lambda exc: self.window.toast(f"Gagal mengosongkan: {exc}"))
+        run_async(work, done, lambda exc: self.window.toast(f"Failed to empty quarantine: {exc}"))

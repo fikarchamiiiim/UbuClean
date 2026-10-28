@@ -1,4 +1,4 @@
-"""Grafik garis halus dengan area gradien tipis."""
+"""Smooth line chart with a thin gradient area."""
 
 from __future__ import annotations
 
@@ -26,7 +26,7 @@ CAIRO_AVAILABLE = _cairo_available()
 
 
 class Sparkline(Gtk.DrawingArea):
-    """Grafik tanpa grid, mendukung beberapa seri data."""
+    """Gridless chart that supports multiple data series."""
 
     def __init__(
         self,
@@ -35,7 +35,7 @@ class Sparkline(Gtk.DrawingArea):
         maximum: float | None = None,
         colors: Sequence[str] = ("accent_color",),
         fill: bool = True,
-        accessible_name: str = "Grafik",
+        accessible_name: str = "Chart",
     ) -> None:
         super().__init__()
         self.set_content_height(height)
@@ -44,7 +44,7 @@ class Sparkline(Gtk.DrawingArea):
             self.set_draw_func(self._draw)
         else:
             self.set_tooltip_text(
-                "Grafik membutuhkan paket python3-gi-cairo (sudo apt install python3-gi-cairo)."
+                "Chart needs python3-gi-cairo (sudo apt install python3-gi-cairo)."
             )
         self._series: list[list[float]] = []
         self._maximum = maximum
@@ -55,7 +55,7 @@ class Sparkline(Gtk.DrawingArea):
         set_accessible(self, accessible_name)
 
     def set_data(self, series: Sequence[Sequence[float]], *, maximum: float | None = None) -> None:
-        """Perbarui data grafik."""
+        """Update the chart data."""
         self._series = [[max(0.0, float(value)) for value in values] for values in series]
         if maximum is not None:
             self._maximum = max(1.0, float(maximum))
@@ -65,7 +65,7 @@ class Sparkline(Gtk.DrawingArea):
             try:
                 self.update_property(
                     [Gtk.AccessibleProperty.LABEL],
-                    [f"{self._accessible_name}, nilai terakhir {latest:.0f}"],
+                    [f"{self._accessible_name}, last value {latest:.0f}"],
                 )
             except (AttributeError, TypeError):
                 pass

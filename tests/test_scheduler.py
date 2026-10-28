@@ -65,7 +65,7 @@ def test_install_invalid_schedule(tmp_path: Path, fake_runner: FakeRunner) -> No
     scheduler = Scheduler(tmp_path, fake_runner, exec_start="/usr/bin/ubuclean")
     ok, message = scheduler.install("yearly", "09:00")
     assert not ok
-    assert "Frekuensi" in message
+    assert "frequency" in message.lower()
     assert not scheduler.timer_path.exists()
 
 
@@ -94,7 +94,7 @@ def test_status_not_installed(tmp_path: Path, fake_runner: FakeRunner) -> None:
     scheduler = Scheduler(tmp_path, fake_runner)
     status = scheduler.status()
     assert status.installed is False
-    assert "belum" in status.message.lower()
+    assert "yet" in status.message.lower()
 
 
 def test_run_scheduled_filters_risky_and_cleans(context: Context) -> None:

@@ -115,7 +115,7 @@ def test_kernel_scan_keeps_running_and_newest(context: Context, fake_runner) -> 
         "linux-image-6.8.0-40-generic",
         "linux-headers-6.8.0-40-generic",
     }
-    assert any("Kernel berjalan" in note for note in preview.notes)
+    assert any("Running kernel" in note for note in preview.notes)
     assert preview.commands
 
 
@@ -128,7 +128,7 @@ def test_kernel_scan_no_candidates(context: Context, fake_runner) -> None:
     )
     preview = KernelCleaner().scan(context)
     assert not [item for item in preview.items if not item.protected]
-    assert any("Tidak ada kernel lama" in note for note in preview.notes)
+    assert any("No old kernels" in note for note in preview.notes)
     assert preview.commands == []
 
 
@@ -245,7 +245,7 @@ def test_journal_scan_and_dry_run(context: Context, fake_runner) -> None:
     preview = cleaner.scan(context)
     assert preview.total_bytes == int(771.6 * 1024**2)
     outcome = cleaner.clean(context.with_dry_run(True), preview)
-    assert outcome.detail.startswith("Pratinjau")
+    assert outcome.detail.startswith("Preview")
     assert outcome.removed == 1
 
 
@@ -291,7 +291,7 @@ def test_docker_scan_inaccessible(context: Context, fake_runner) -> None:
     )
     preview = DockerCleaner().scan(context)
     assert preview.supported is False
-    assert any("grup docker" in note for note in preview.notes)
+    assert any("docker group" in note for note in preview.notes)
 
 
 def test_docker_clean_dry_run(context: Context, fake_runner) -> None:

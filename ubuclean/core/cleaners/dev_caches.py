@@ -1,4 +1,4 @@
-"""Cleaner cache developer (pip, npm, yarn, pnpm, cargo, gradle, Go)."""
+"""Developer cache cleaner (pip, npm, yarn, pnpm, cargo, gradle, Go)."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from ubuclean.core.registry import get_category
 
 
 def cache_targets(home: Path, cache_dir: Path) -> list[tuple[str, Path]]:
-    """Daftar (label, path) cache developer yang umum."""
+    """List of common developer cache (label, path) pairs."""
     return [
         ("pip", cache_dir / "pip"),
         ("npm", home / ".npm/_cacache"),
@@ -27,7 +27,7 @@ def cache_targets(home: Path, cache_dir: Path) -> list[tuple[str, Path]]:
 
 
 class DevCacheCleaner(BaseCleaner):
-    """Membersihkan cache tool developer; semuanya opsional."""
+    """Cleans developer tool caches; all of them are optional."""
 
     category = get_category("dev-caches")
 
@@ -41,7 +41,7 @@ class DevCacheCleaner(BaseCleaner):
         return cache_targets(home, cache)
 
     def scan(self, ctx: Context) -> Preview:
-        """Ukur setiap cache developer yang ada."""
+        """Measure each developer cache that exists."""
         items: list[PreviewItem] = []
         for label_text, path in self._targets(ctx):
             if not path.is_dir():
@@ -57,14 +57,14 @@ class DevCacheCleaner(BaseCleaner):
             )
         items.sort(key=lambda item: item.size, reverse=True)
         notes = [
-            "Cache developer akan dibuat ulang saat tool dipakai kembali.",
-            "Semua item dipindahkan ke karantina UbuClean.",
+            "Developer caches will be recreated when the tool is used again.",
+            "All items are moved to the UbuClean quarantine.",
         ]
         if not items:
-            notes.append("Tidak ada cache developer yang ditemukan.")
+            notes.append("No developer caches found.")
         return self.new_preview(items=items, notes=notes)
 
     def clean(self, ctx: Context, preview: Preview) -> CleanOutcome:
-        """Karantina cache developer."""
+        """Quarantine developer caches."""
         paths = [item.path for item in preview.items if item.path is not None]
         return self.remove_paths(ctx, paths)

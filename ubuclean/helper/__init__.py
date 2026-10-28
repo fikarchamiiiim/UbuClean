@@ -1,1 +1,1 @@
-"""Helper root UbuClean."""
+"""UbuClean root helper."""

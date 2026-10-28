@@ -1,4 +1,4 @@
-"""Perhitungan Skor Kesehatan Sistem dan rekomendasi."""
+"""System Health Score computation and recommendations."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from ubuclean.core.util import clamp, format_bytes
 
 @dataclass(frozen=True, slots=True)
 class HealthFactor:
-    """Kontribusi satu aspek terhadap skor kesehatan."""
+    """Contribution of one aspect to the health score."""
 
     key: str
     label: str
@@ -20,13 +20,13 @@ class HealthFactor:
 
     @property
     def lost(self) -> float:
-        """Poin yang hilang dari aspek ini."""
+        """Points lost on this aspect."""
         return max(0.0, self.maximum - self.score)
 
 
 @dataclass(frozen=True, slots=True)
 class Recommendation:
-    """Saran tindakan yang relevan dengan kondisi saat ini."""
+    """Suggested action relevant to the current conditions."""
 
     title: str
     detail: str
@@ -36,7 +36,7 @@ class Recommendation:
 
 @dataclass(slots=True)
 class HealthReport:
-    """Hasil penilaian kesehatan sistem."""
+    """Result of the system health assessment."""
 
     score: int
     factors: list[HealthFactor] = field(default_factory=list)
@@ -44,18 +44,18 @@ class HealthReport:
 
     @property
     def verdict(self) -> str:
-        """Label singkat untuk skor."""
+        """Short label for the score."""
         if self.score >= 85:
-            return "Sangat baik"
+            return "Excellent"
         if self.score >= 70:
-            return "Baik"
+            return "Good"
         if self.score >= 50:
-            return "Waspada"
-        return "Perlu perhatian"
+            return "Caution"
+        return "Needs attention"
 
     @property
     def severity(self) -> str:
-        """Kategori warna: success/warning/error."""
+        """Colour category: success/warning/error."""
         if self.score >= 70:
             return "success"
         if self.score >= 45:
@@ -63,7 +63,7 @@ class HealthReport:
         return "error"
 
     def deductions(self) -> list[HealthFactor]:
-        """Aspek yang menurunkan skor, terbesar lebih dulu."""
+        """Aspects that lower the score, largest first."""
         return sorted(
             [factor for factor in self.factors if factor.lost >= 1],
             key=lambda factor: factor.lost,
@@ -71,7 +71,7 @@ class HealthReport:
         )
 
     def as_dict(self) -> dict[str, object]:
-        """Representasi JSON-able."""
+        """JSON-able representation."""
         return {
             "score": self.score,
             "verdict": self.verdict,
@@ -107,38 +107,38 @@ def compute_health(
     cache_bytes: int = 0,
     old_kernels: int = 0,
 ) -> HealthReport:
-    """Hitung skor 0–100 dari beberapa metrik yang sudah dikumpulkan."""
+    """Compute a 0–100 score from the metrics that have already been collected."""
     factors: list[HealthFactor] = []
 
     disk_score = 25.0 * clamp((95.0 - float(disk_percent)) / 25.0, 0.0, 1.0)
     factors.append(
         HealthFactor(
             "disk",
-            "Ruang disk",
+            "Disk space",
             disk_score,
             25.0,
-            f"Disk terpakai {disk_percent:.0f}%.",
+            f"Disk {disk_percent:.0f}% used.",
         )
     )
 
     ram_score = 20.0 * clamp((95.0 - float(ram_percent)) / 20.0, 0.0, 1.0)
     factors.append(
-        HealthFactor("ram", "Penggunaan RAM", ram_score, 20.0, f"RAM terpakai {ram_percent:.0f}%.")
+        HealthFactor("ram", "RAM usage", ram_score, 20.0, f"RAM {ram_percent:.0f}% used.")
     )
 
     swap_score = 10.0 * (1.0 - clamp(float(swap_percent) / 40.0, 0.0, 1.0))
     factors.append(
-        HealthFactor("swap", "Swap", swap_score, 10.0, f"Swap terpakai {swap_percent:.0f}%.")
+        HealthFactor("swap", "Swap", swap_score, 10.0, f"Swap {swap_percent:.0f}% used.")
     )
 
     trash_score = 10.0 * (1.0 - clamp(trash_bytes / (2 * 1024**3), 0.0, 1.0))
     factors.append(
         HealthFactor(
             "trash",
-            "Tong sampah",
+            "Trash",
             trash_score,
             10.0,
-            "Tong sampah kosong." if trash_bytes <= 0 else f"Tong sampah berisi {format_bytes(trash_bytes)}.",
+            "Trash is empty." if trash_bytes <= 0 else f"Trash holds {format_bytes(trash_bytes)}.",
         )
     )
 
@@ -146,10 +146,10 @@ def compute_health(
     factors.append(
         HealthFactor(
             "startup",
-            "Beban startup",
+            "Startup load",
             startup_score,
             10.0,
-            f"{startup_count} aplikasi/layanan autostart.",
+            f"{startup_count} autostart applications/services.",
         )
     )
 
@@ -157,12 +157,12 @@ def compute_health(
     factors.append(
         HealthFactor(
             "cache",
-            "Sampah terdeteksi",
+            "Detected junk",
             cache_score,
             15.0,
-            "Tidak ada sampah besar terdeteksi."
+            "No large junk detected."
             if cache_bytes <= 0
-            else f"{format_bytes(cache_bytes)} sampah bisa dibebaskan.",
+            else f"{format_bytes(cache_bytes)} of junk can be freed.",
         )
     )
 
@@ -170,10 +170,10 @@ def compute_health(
     factors.append(
         HealthFactor(
             "kernels",
-            "Kernel lama",
+            "Old kernels",
             kernel_score,
             10.0,
-            "Tidak ada kernel lama." if old_kernels <= 0 else f"{old_kernels} paket kernel lama.",
+            "No old kernels." if old_kernels <= 0 else f"{old_kernels} old kernel packages.",
         )
     )
 
@@ -182,13 +182,13 @@ def compute_health(
 
     if disk_percent >= 85:
         detail = (
-            f"{format_bytes(cache_bytes)} cache dan sampah bisa dibebaskan."
+            f"{format_bytes(cache_bytes)} of cache and junk can be freed."
             if cache_bytes > 0
-            else "Buka pembersih untuk memindai sampah dan cache."
+            else "Open the cleaner to scan for junk and cache."
         )
         report.recommendations.append(
             Recommendation(
-                title=f"Disk {disk_percent:.0f}% penuh",
+                title=f"Disk {disk_percent:.0f}% full",
                 detail=detail,
                 severity="critical" if disk_percent >= 92 else "warning",
                 category_ids=("user-cache", "apt-cache", "journal", "trash"),
@@ -197,8 +197,8 @@ def compute_health(
     if trash_bytes >= 512 * 1024**2:
         report.recommendations.append(
             Recommendation(
-                title="Tong sampah besar",
-                detail=f"{format_bytes(trash_bytes)} item menunggu dikosongkan.",
+                title="Trash is large",
+                detail=f"{format_bytes(trash_bytes)} of items are waiting to be emptied.",
                 severity="warning",
                 category_ids=("trash",),
             )
@@ -206,8 +206,8 @@ def compute_health(
     if old_kernels > 0:
         report.recommendations.append(
             Recommendation(
-                title="Kernel lama terpasang",
-                detail=f"{old_kernels} paket kernel lama bisa dihapus dengan aman.",
+                title="Old kernels installed",
+                detail=f"{old_kernels} old kernel packages can be removed safely.",
                 severity="info",
                 category_ids=("kernels",),
             )
@@ -215,8 +215,8 @@ def compute_health(
     if ram_percent >= 90:
         report.recommendations.append(
             Recommendation(
-                title="RAM hampir penuh",
-                detail="Tutup aplikasi yang tidak dipakai atau buang cache yang terbentuk lagi.",
+                title="RAM is almost full",
+                detail="Close applications you are not using or drop the cache that has built up again.",
                 severity="warning",
                 category_ids=(),
             )
@@ -224,8 +224,8 @@ def compute_health(
     if startup_count >= 15:
         report.recommendations.append(
             Recommendation(
-                title="Startup terlalu ramai",
-                detail=f"{startup_count} aplikasi berjalan saat login.",
+                title="Startup is too crowded",
+                detail=f"{startup_count} applications run at login.",
                 severity="info",
                 category_ids=(),
             )
@@ -243,7 +243,7 @@ def scan_health(
     startup_count: int = 0,
     old_kernels: int = 0,
 ) -> HealthReport:
-    """Bangun laporan kesehatan dari hasil pindai dan metrik live."""
+    """Build the health report from scan results and live metrics."""
     cache_bytes = sum(
         preview.total_bytes
         for category_id, preview in previews.items()

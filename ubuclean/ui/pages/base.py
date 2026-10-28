@@ -1,4 +1,4 @@
-"""Kerangka halaman dengan header, clamp, dan area scroll."""
+"""Page skeleton with header, clamp, and scroll area."""
 
 from __future__ import annotations
 
@@ -11,10 +11,10 @@ from gi.repository import Adw, Gtk
 
 
 class BasePage(Gtk.Box):
-    """Halaman standar: HeaderBar + konten scroll di dalam Adw.Clamp.
+    """Standard page: HeaderBar + scrolling content inside Adw.Clamp.
 
-    Adw.ToolbarView bersifat final di libadwaita 1.5, jadi halaman memakai
-    komposisi dan mengekspos ``header``/``body`` untuk subclass.
+    Adw.ToolbarView is final in libadwaita 1.5, so pages use composition
+    and expose ``header``/``body`` to subclasses.
     """
 
     def __init__(
@@ -46,18 +46,18 @@ class BasePage(Gtk.Box):
         self.toolbar.set_content(self.scrolled)
 
     def add_action(self, widget: Gtk.Widget) -> None:
-        """Tambahkan tombol aksi ke HeaderBar."""
+        """Add an action button to the HeaderBar."""
         self.header.pack_end(widget)
 
     def add_bottom_bar(self, widget: Gtk.Widget) -> None:
-        """Tambahkan bilah aksi yang menempel di bawah halaman."""
+        """Add an action bar pinned below the page."""
         self.toolbar.add_bottom_bar(widget)
 
     def on_shown(self) -> None:
-        """Dipanggil saat halaman menjadi terlihat."""
+        """Called when the page becomes visible."""
 
     def on_hidden(self) -> None:
-        """Dipanggil saat halaman ditinggalkan."""
+        """Called when the page is left."""
 
     def scan(self) -> None:
-        """Pintasan Ctrl+R; halaman yang mendukung boleh menimpanya."""
+        """Ctrl+R shortcut; pages that support it may override this."""

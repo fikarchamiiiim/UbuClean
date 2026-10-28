@@ -1,4 +1,4 @@
-"""Halaman analisis disk dan pencari file duplikat."""
+"""Disk analysis page and duplicate file finder."""
 
 from __future__ import annotations
 
@@ -44,17 +44,17 @@ from ubuclean.ui.pages.base import BasePage
 from ubuclean.ui.widgets.treemap import Treemap
 
 STAGE_LABELS = {
-    "size": "Mengelompokkan berdasarkan ukuran",
-    "partial": "Menghitung hash parsial",
-    "full": "Menghitung hash penuh",
+    "size": "Grouping by size",
+    "partial": "Computing partial hashes",
+    "full": "Computing full hashes",
 }
 
 
 class DiskPage(BasePage):
-    """Pemindai folder, treemap, dan pencari duplikat tanpa hapus otomatis."""
+    """Folder scanner, treemap, and duplicate finder with no automatic deletion."""
 
     def __init__(self, window: Any) -> None:
-        super().__init__("Disk", "Analisis folder dan file duplikat", maximum_width=980)
+        super().__init__("Disk", "Folder and duplicate file analysis", maximum_width=980)
         self.window = window
         self.services = window.services
         self.current_folder = Path.home()
@@ -76,12 +76,12 @@ class DiskPage(BasePage):
         self._treemap_card = self._build_treemap_card()
         self.body.append(self._treemap_card)
         self._folders_group = Adw.PreferencesGroup(
-            title="Folder terbesar",
-            description="Diurutkan berdasarkan ukuran total isi folder.",
+            title="Largest folders",
+            description="Sorted by the total size of the folder contents.",
         )
         self._files_group = Adw.PreferencesGroup(
-            title="File terbesar",
-            description="File individual terbesar di dalam folder yang dipindai.",
+            title="Largest files",
+            description="Largest individual files inside the scanned folder.",
         )
         self.body.append(self._folders_group)
         self.body.append(self._files_group)
@@ -98,19 +98,19 @@ class DiskPage(BasePage):
         row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=14)
         row.append(icon("folder-symbolic", 28, css="uc-nav-icon"))
         text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2, hexpand=True)
-        text.append(label("Folder yang dianalisis", css="uc-label"))
+        text.append(label("Analyzed folder", css="uc-label"))
         self._path_label = label(str(self.current_folder), css="uc-metric-compact", wrap=True)
         text.append(self._path_label)
         text.append(
             label(
-                "Pemindaian berjalan di thread terpisah dan bisa dibatalkan.",
+                "Scanning runs in a separate thread and can be cancelled.",
                 css="uc-subtle",
             )
         )
         row.append(text)
-        self._choose_button = button("Pilih folder", icon_name="folder-open-symbolic")
+        self._choose_button = button("Select folder", icon_name="folder-open-symbolic")
         self._choose_button.connect("clicked", lambda *_: self._choose_folder())
-        self._scan_button = button("Pindai", icon_name="system-search-symbolic", suggested=True)
+        self._scan_button = button("Scan", icon_name="system-search-symbolic", suggested=True)
         self._scan_button.connect("clicked", lambda *_: self._start_scan())
         row.append(self._choose_button)
         row.append(self._scan_button)
@@ -123,9 +123,9 @@ class DiskPage(BasePage):
         top = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
         self._scan_spinner = Gtk.Spinner()
         top.append(self._scan_spinner)
-        self._scan_label = label("Memindai…", css="uc-subtle", hexpand=True)
+        self._scan_label = label("Scanning…", css="uc-subtle", hexpand=True)
         top.append(self._scan_label)
-        self._scan_cancel_button = button("Batalkan", css=("flat",))
+        self._scan_cancel_button = button("Cancel", css=("flat",))
         self._scan_cancel_button.connect("clicked", lambda *_: self._cancel_scan())
         top.append(self._scan_cancel_button)
         self._scan_bar = progress()
@@ -135,8 +135,8 @@ class DiskPage(BasePage):
 
     def _build_empty_state(self) -> Gtk.Widget:
         return Adw.StatusPage(
-            title="Belum ada hasil",
-            description="Pilih folder lalu tekan Pindai untuk melihat folder dan file terbesar.",
+            title="No results yet",
+            description="Select a folder and press Scan to see the largest folders and files.",
             icon_name="drive-harddisk-symbolic",
         )
 
@@ -158,10 +158,10 @@ class DiskPage(BasePage):
     def _build_treemap_card(self) -> Gtk.Widget:
         box = card(spacing=10)
         box.set_visible(False)
-        box.append(label("Komposisi folder", css="uc-section"))
+        box.append(label("Folder composition", css="uc-section"))
         box.append(
             label(
-                "Setiap kotak mewakili item langsung di dalam folder; luas sebanding ukuran.",
+                "Each box represents a direct item inside the folder; area is proportional to size.",
                 css="uc-subtle",
                 wrap=True,
             )
@@ -172,18 +172,18 @@ class DiskPage(BasePage):
 
     def _build_duplicates(self) -> Gtk.Widget:
         group = Adw.PreferencesGroup(
-            title="File duplikat",
+            title="Duplicate files",
             description=(
-                "Kelompokkan berdasarkan ukuran, lalu hash parsial, lalu hash penuh. "
-                "Tidak ada file yang dihapus otomatis."
+                "Group by size, then partial hash, then full hash. "
+                "No files are deleted automatically."
             ),
         )
         row = Adw.ActionRow(
-            title="Cari duplikat",
-            subtitle="Pilih sendiri file yang ingin dipindahkan ke Tong Sampah.",
+            title="Find duplicates",
+            subtitle="Choose yourself which files to move to Trash.",
         )
         row.add_prefix(icon("document-open-recent-symbolic", 16, css="uc-nav-icon"))
-        self._dup_button = button("Cari duplikat", icon_name="system-search-symbolic")
+        self._dup_button = button("Find duplicates", icon_name="system-search-symbolic")
         self._dup_button.set_valign(Gtk.Align.CENTER)
         self._dup_button.connect("clicked", lambda *_: self._start_duplicates())
         row.add_suffix(self._dup_button)
@@ -196,9 +196,9 @@ class DiskPage(BasePage):
         top = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
         self._dup_spinner = Gtk.Spinner()
         top.append(self._dup_spinner)
-        self._dup_label = label("Mencari duplikat…", css="uc-subtle", hexpand=True)
+        self._dup_label = label("Searching for duplicates…", css="uc-subtle", hexpand=True)
         top.append(self._dup_label)
-        self._dup_cancel_button = button("Batalkan", css=("flat",))
+        self._dup_cancel_button = button("Cancel", css=("flat",))
         self._dup_cancel_button.connect("clicked", lambda *_: self._cancel_duplicates())
         top.append(self._dup_cancel_button)
         self._dup_bar = progress()
@@ -215,7 +215,7 @@ class DiskPage(BasePage):
 
     # ------------------------------------------------------------------
     def _choose_folder(self) -> None:
-        dialog = Gtk.FileDialog(title="Pilih folder untuk dianalisis", modal=True)
+        dialog = Gtk.FileDialog(title="Select folder to analyze", modal=True)
         try:
             dialog.set_initial_folder(Gio.File.new_for_path(str(self.current_folder)))
         except (AttributeError, GLib.Error):
@@ -250,7 +250,7 @@ class DiskPage(BasePage):
         if self._scan_cancel is not None:
             self._scan_cancel.set()
             self._scan_cancel_button.set_sensitive(False)
-            self._scan_label.set_text("Membatalkan pemindaian…")
+            self._scan_label.set_text("Cancelling scan…")
 
     def _start_scan(self) -> None:
         if self._scan_busy:
@@ -260,7 +260,7 @@ class DiskPage(BasePage):
         self._scan_progress_card.set_visible(True)
         self._scan_spinner.start()
         self._scan_bar.set_fraction(0.0)
-        self._scan_label.set_text("Memindai…")
+        self._scan_label.set_text("Scanning…")
         self._scan_cancel_button.set_sensitive(True)
         self._scan_button.set_sensitive(False)
         self._choose_button.set_sensitive(False)
@@ -286,10 +286,10 @@ class DiskPage(BasePage):
             self._choose_button.set_sensitive(True)
             self._populate_scan(result)
             if result.cancelled:
-                self.window.toast("Pemindaian dibatalkan; hasil sebagian ditampilkan.")
+                self.window.toast("Scan cancelled; partial results shown.")
             else:
                 self.window.toast(
-                    f"Selesai · {format_bytes(result.total_bytes)} dalam {result.elapsed:.1f} detik"
+                    f"Done · {format_bytes(result.total_bytes)} in {result.elapsed:.1f} seconds"
                 )
 
         def failed(exc: Exception) -> None:
@@ -300,9 +300,9 @@ class DiskPage(BasePage):
             self._choose_button.set_sensitive(True)
             self._set_results_visible(False)
             if isinstance(exc, InvalidScanRoot):
-                show_info(self, heading="Folder tidak valid", body=str(exc))
+                show_info(self, heading="Invalid folder", body=str(exc))
             else:
-                self.window.toast(f"Pemindaian gagal: {exc}")
+                self.window.toast(f"Scan failed: {exc}")
 
         run_async(work, done, failed)
 
@@ -320,12 +320,12 @@ class DiskPage(BasePage):
         self._summary_anim.set_value(result.total_bytes)
         detail = (
             f"{format_count(result.scanned_files)} file · "
-            f"{format_count(result.scanned_dirs)} folder · {result.elapsed:.1f} detik"
+            f"{format_count(result.scanned_dirs)} folders · {result.elapsed:.1f} seconds"
         )
         if result.cancelled:
-            detail += " · dibatalkan"
+            detail += " · cancelled"
         if result.errors:
-            detail += f" · {result.errors} item tidak dapat dibaca"
+            detail += f" · {result.errors} items could not be read"
         self._summary_detail.set_text(detail)
         self.treemap.set_entries(
             [(entry.path.name, entry.size) for entry in result.children]
@@ -357,7 +357,7 @@ class DiskPage(BasePage):
         if self._dup_cancel is not None:
             self._dup_cancel.set()
             self._dup_cancel_button.set_sensitive(False)
-            self._dup_label.set_text("Membatalkan pencarian duplikat…")
+            self._dup_label.set_text("Cancelling duplicate search…")
 
     def _start_duplicates(self) -> None:
         if self._dup_busy:
@@ -367,7 +367,7 @@ class DiskPage(BasePage):
         self._dup_progress_card.set_visible(True)
         self._dup_spinner.start()
         self._dup_bar.set_fraction(0.0)
-        self._dup_label.set_text("Mengelompokkan berdasarkan ukuran…")
+        self._dup_label.set_text("Grouping by size…")
         self._dup_cancel_button.set_sensitive(True)
         self._dup_button.set_sensitive(False)
         self._choose_button.set_sensitive(False)
@@ -394,10 +394,10 @@ class DiskPage(BasePage):
             self._choose_button.set_sensitive(True)
             self._populate_duplicates(result)
             if result.cancelled:
-                self.window.toast("Pencarian duplikat dibatalkan.")
+                self.window.toast("Duplicate search cancelled.")
             else:
                 self.window.toast(
-                    f"{len(result.groups)} grup duplikat · {format_bytes(result.total_wasted)} bisa dihemat"
+                    f"{len(result.groups)} duplicate groups · {format_bytes(result.total_wasted)} can be saved"
                 )
 
         def failed(exc: Exception) -> None:
@@ -406,7 +406,7 @@ class DiskPage(BasePage):
             self._dup_progress_card.set_visible(False)
             self._dup_button.set_sensitive(True)
             self._choose_button.set_sensitive(True)
-            self.window.toast(f"Pencarian duplikat gagal: {exc}")
+            self.window.toast(f"Duplicate search failed: {exc}")
 
         run_async(work, done, failed)
 
@@ -421,11 +421,11 @@ class DiskPage(BasePage):
     def _populate_duplicates(self, result: DuplicateScanResult) -> None:
         if not result.groups:
             box = card(spacing=8)
-            box.append(label("Tidak ada duplikat ditemukan", css="uc-section"))
+            box.append(label("No duplicates found", css="uc-section"))
             box.append(
                 label(
-                    f"{format_count(result.scanned_files)} file diperiksa. "
-                    "File yang lebih kecil dari 4 kB dilewati.",
+                    f"{format_count(result.scanned_files)} files checked. "
+                    "Files smaller than 4 kB are skipped.",
                     css="uc-subtle",
                     wrap=True,
                 )
@@ -433,11 +433,11 @@ class DiskPage(BasePage):
             self._dup_results.append(box)
             return
         group = Adw.PreferencesGroup(
-            title=f"{len(result.groups)} grup duplikat",
+            title=f"{len(result.groups)} duplicate groups",
             description=(
-                f"{format_bytes(result.total_wasted)} bisa dihemat dengan menyisakan satu salinan."
+                f"{format_bytes(result.total_wasted)} can be saved by keeping one copy."
                 + (
-                    f" Menampilkan {min(100, len(result.groups))} grup teratas."
+                    f" Showing the top {min(100, len(result.groups))} groups."
                     if len(result.groups) > 100
                     else ""
                 )
@@ -446,9 +446,9 @@ class DiskPage(BasePage):
         for duplicate_group in result.groups[:100]:
             expander = expander_row(
                 f"{len(duplicate_group.files)} file · {format_bytes(duplicate_group.size)}",
-                f"{format_bytes(duplicate_group.wasted_bytes)} bisa dihemat",
+                f"{format_bytes(duplicate_group.wasted_bytes)} can be saved",
             )
-            select_button = button("Pilih semua kecuali satu", css=("flat",))
+            select_button = button("Select all but one", css=("flat",))
             checks_for_group: list[Gtk.CheckButton] = []
             for index, path in enumerate(duplicate_group.files):
                 row = action_row(path.name, str(path.parent))
@@ -470,10 +470,10 @@ class DiskPage(BasePage):
 
         footer = card(spacing=8)
         bottom = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
-        self._dup_selection_label = label("Belum ada file dipilih", css="uc-subtle", hexpand=True)
+        self._dup_selection_label = label("No files selected yet", css="uc-subtle", hexpand=True)
         bottom.append(self._dup_selection_label)
         self._trash_button = button(
-            "Pindahkan ke Tong Sampah",
+            "Move to Trash",
             icon_name="user-trash-symbolic",
             destructive=True,
         )
@@ -483,7 +483,7 @@ class DiskPage(BasePage):
         footer.append(bottom)
         footer.append(
             label(
-                "File dipindahkan ke Tong Sampah lewat Gio, bukan dihapus permanen.",
+                "Files are moved to Trash via Gio, not permanently deleted.",
                 css="uc-subtle",
             )
         )
@@ -503,10 +503,10 @@ class DiskPage(BasePage):
         total = sum(path.stat().st_size for path in selected if path.exists())
         if selected:
             self._dup_selection_label.set_text(
-                f"{len(selected)} file · {format_bytes(total)} dipilih"
+                f"{len(selected)} files · {format_bytes(total)} selected"
             )
         else:
-            self._dup_selection_label.set_text("Belum ada file dipilih")
+            self._dup_selection_label.set_text("No files selected yet")
         self._trash_button.set_sensitive(bool(selected))
 
     def _confirm_trash(self) -> None:
@@ -516,12 +516,12 @@ class DiskPage(BasePage):
         total = sum(path.stat().st_size for path in selected if path.exists())
         ask_confirm(
             self,
-            heading=f"Pindahkan {len(selected)} file ke Tong Sampah?",
+            heading=f"Move {len(selected)} files to Trash?",
             body=(
-                f"{format_bytes(total)} akan dipindahkan ke Tong Sampah. "
-                "File masih bisa dipulihkan dari Tong Sampah."
+                f"{format_bytes(total)} will be moved to Trash. "
+                "The files can still be restored from Trash."
             ),
-            confirm_label="Pindahkan",
+            confirm_label="Move",
             destructive=True,
             on_confirm=lambda: self._trash_paths(selected),
         )
@@ -544,11 +544,11 @@ class DiskPage(BasePage):
                     HistoryEntry(
                         action="trash-duplicates",
                         category="disk",
-                        label="Duplikat dipindahkan ke Tong Sampah",
+                        label="Duplicates moved to Trash",
                         items=len(paths) - len(errors),
                         bytes=total,
                         ok=not errors,
-                        detail="File duplikat dipindahkan ke Trash lewat Gio.",
+                        detail="Duplicate files moved to Trash via Gio.",
                         errors=list(errors),
                     )
                 )
@@ -557,15 +557,15 @@ class DiskPage(BasePage):
             if errors:
                 show_info(
                     self,
-                    heading="Sebagian file gagal dipindahkan",
+                    heading="Some files failed to move",
                     body="\n".join(errors[:8]),
                 )
             self.window.toast(
-                f"{len(paths) - len(errors)} file dipindahkan ke Tong Sampah"
+                f"{len(paths) - len(errors)} files moved to Trash"
             )
             self._clear_box(self._dup_results)
             self._dup_checks.clear()
             self._dup_rows.clear()
             self._dup_button.set_sensitive(True)
 
-        run_async(work, done, lambda exc: self.window.toast(f"Gagal memindahkan: {exc}"))
+        run_async(work, done, lambda exc: self.window.toast(f"Failed to move: {exc}"))

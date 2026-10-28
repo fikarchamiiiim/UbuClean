@@ -1,4 +1,4 @@
-"""Konstanta global UbuClean."""
+"""UbuClean global constants."""
 
 from __future__ import annotations
 

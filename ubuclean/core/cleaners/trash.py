@@ -1,4 +1,4 @@
-"""Cleaner Tong Sampah pengguna."""
+"""Cleaner for the user's Trash."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from ubuclean.core.registry import get_category
 
 
 class TrashCleaner(BaseCleaner):
-    """Mengosongkan Tong Sampah lewat karantina UbuClean."""
+    """Empties the Trash through the UbuClean quarantine."""
 
     category = get_category("trash")
 
@@ -25,10 +25,10 @@ class TrashCleaner(BaseCleaner):
         return ctx.paths.home / ".local/share/Trash/info"
 
     def scan(self, ctx: Context) -> Preview:
-        """Daftar isi Tong Sampah beserta ukurannya."""
+        """List the Trash contents along with their sizes."""
         files_dir = self._files_dir(ctx)
         if not files_dir.is_dir():
-            return self.new_preview(notes=["Tong Sampah kosong atau tidak ditemukan."])
+            return self.new_preview(notes=["Trash is empty or not found."])
         items = []
         for path, size in list_children(files_dir):
             items.append(
@@ -36,18 +36,18 @@ class TrashCleaner(BaseCleaner):
                     id=str(path),
                     label=path.name,
                     size=size,
-                    detail="Dipindahkan ke karantina UbuClean",
+                    detail="Moved to the UbuClean quarantine",
                     path=path,
                 )
             )
         notes = [
-            "Item dipindahkan ke karantina UbuClean agar bisa dipulihkan.",
-            "Pemulihan mengembalikan item ke lokasi asalnya bila metadata .trashinfo tersedia.",
+            "Items are moved to the UbuClean quarantine so they can be restored.",
+            "Restoring returns items to their original location when .trashinfo metadata is available.",
         ]
         return self.new_preview(items=items, notes=notes)
 
     def _original_paths(self, ctx: Context, sources: list[Path]) -> dict[str, Path]:
-        """Baca lokasi asli dari file .trashinfo bila ada."""
+        """Read the original location from the .trashinfo file when present."""
         overrides: dict[str, Path] = {}
         info_dir = self._info_dir(ctx)
         for source in sources:
@@ -65,7 +65,7 @@ class TrashCleaner(BaseCleaner):
         return overrides
 
     def clean(self, ctx: Context, preview: Preview) -> CleanOutcome:
-        """Karantina isi Tong Sampah lalu hapus metadata .trashinfo."""
+        """Quarantine the Trash contents, then delete the .trashinfo metadata."""
         files = [item.path for item in preview.items if item.path is not None]
         if ctx.dry_run:
             return self.remove_paths(ctx, files)
@@ -79,7 +79,7 @@ class TrashCleaner(BaseCleaner):
             return CleanOutcome(
                 category_id=self.category.id,
                 failed=len(files),
-                errors=["Tidak ada item Tong Sampah yang bisa dikarantina."],
+                errors=["No Trash items could be quarantined."],
             )
         outcome = CleanOutcome(
             category_id=self.category.id,

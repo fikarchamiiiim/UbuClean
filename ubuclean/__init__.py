@@ -1,4 +1,4 @@
-"""UbuClean — pembersih dan perawatan sistem untuk Ubuntu Desktop."""
+"""UbuClean — system cleaner and maintenance tool for Ubuntu Desktop."""
 
 from ubuclean.constants import APP_ID, APP_NAME, VERSION
 

@@ -1,4 +1,4 @@
-"""Halaman-halaman UbuClean."""
+"""UbuClean pages."""
 
 from ubuclean.ui.pages.base import BasePage
 from ubuclean.ui.pages.clean import CleanPage

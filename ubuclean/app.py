@@ -1,4 +1,4 @@
-"""Aplikasi GTK UbuClean."""
+"""UbuClean GTK application."""
 
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ from ubuclean.ui.window import MainWindow
 
 
 class UbuCleanApplication(Adw.Application):
-    """Adw.Application dengan satu jendela utama."""
+    """Adw.Application with a single main window."""
 
     def __init__(self, initial_page: str = "home") -> None:
         super().__init__(application_id=constants.APP_ID, flags=Gio.ApplicationFlags.DEFAULT_FLAGS)
@@ -50,12 +50,12 @@ class UbuCleanApplication(Adw.Application):
 
 
 def run_gui(argv: list[str] | None = None, *, page: str = "home") -> int:
-    """Jalankan GUI; menolak eksekusi sebagai root."""
+    """Run the GUI; refuses to execute as root."""
     del argv
     if os.geteuid() == 0:
         print(
-            "UbuClean GUI tidak boleh dijalankan sebagai root. "
-            "Jalankan sebagai pengguna biasa; operasi sistem akan memakai pkexec.",
+            "The UbuClean GUI must not be run as root. "
+            "Run it as a regular user; system operations will use pkexec.",
             file=sys.stderr,
         )
         return 1

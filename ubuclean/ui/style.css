@@ -1,5 +1,5 @@
-/* UbuClean — tema kartu minimalis memakai named colors libadwaita.
-   Semua warna mengikuti tema terang/gelap sistem. */
+/* UbuClean — minimalist card theme using libadwaita named colors.
+   All colors follow the system light/dark theme. */
 
 .uc-card {
   background-color: @card_bg_color;

@@ -45,7 +45,7 @@ def test_cache_missing(home: Path, context: Context) -> None:
     cleaner = DevCacheCleaner(home=home, cache_dir=home / ".cache")
     preview = cleaner.scan(context)
     assert preview.items == []
-    assert any("Tidak ada" in note for note in preview.notes)
+    assert any("No developer caches" in note for note in preview.notes)
 
 
 def test_expand_roots(home: Path) -> None:
@@ -76,7 +76,7 @@ def test_project_markers_old_only(home: Path, context: Context) -> None:
     names = {item.path.name for item in preview.items}
     assert names == {"node_modules", "target"}
     assert preview.total_bytes == 8
-    assert any("folder diperiksa" in note for note in preview.notes)
+    assert any("Scanned" in note for note in preview.notes)
 
 
 def test_project_cleanup_quarantines(home: Path, context: Context) -> None:
@@ -97,7 +97,7 @@ def test_missing_roots(home: Path, context: Context) -> None:
     cleaner = DevProjectsCleaner(home=home, roots=[], days=90)
     preview = cleaner.scan(context)
     assert preview.items == []
-    assert any("Belum ada folder induk" in note for note in preview.notes)
+    assert any("No valid parent folders" in note for note in preview.notes)
 
 
 def test_scan_does_not_enter_markers(home: Path, context: Context) -> None:

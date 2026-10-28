@@ -1,4 +1,4 @@
-"""Karantina item yang dibersihkan agar bisa dipulihkan."""
+"""Quarantine cleaned items so they can be restored."""
 
 from __future__ import annotations
 
@@ -17,24 +17,24 @@ from ubuclean.core.paths import HOME_PERSONAL_DIRS, path_size
 
 
 class QuarantineError(RuntimeError):
-    """Kesalahan saat memindahkan atau memulihkan item karantina."""
+    """Error while moving or restoring quarantine items."""
 
 
 @dataclass(slots=True)
 class QuarantineItem:
-    """Satu item yang disimpan di karantina."""
+    """A single item kept in quarantine."""
 
     original: str
     stored: str
     size: int = 0
 
     def to_dict(self) -> dict[str, Any]:
-        """Representasi JSON-able."""
+        """JSON-able representation."""
         return {"original": self.original, "stored": self.stored, "size": self.size}
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "QuarantineItem":
-        """Bangun item dari metadata JSON."""
+        """Build an item from JSON metadata."""
         return cls(
             original=str(data["original"]),
             stored=str(data["stored"]),
@@ -44,7 +44,7 @@ class QuarantineItem:
 
 @dataclass(slots=True)
 class QuarantineEntry:
-    """Metadata satu aksi pembersihan yang dikarantina."""
+    """Metadata for one quarantined cleaning action."""
 
     action_id: str
     category_id: str
@@ -54,11 +54,11 @@ class QuarantineEntry:
 
     @property
     def total_bytes(self) -> int:
-        """Total ukuran item yang tersimpan."""
+        """Total size of the stored items."""
         return sum(item.size for item in self.items)
 
     def to_dict(self) -> dict[str, Any]:
-        """Representasi JSON-able."""
+        """JSON-able representation."""
         return {
             "version": 1,
             "action_id": self.action_id,
@@ -70,7 +70,7 @@ class QuarantineEntry:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "QuarantineEntry":
-        """Bangun entri dari metadata JSON, validasi field wajib."""
+        """Build an entry from JSON metadata, validating the required fields."""
         return cls(
             action_id=str(data["action_id"]),
             category_id=str(data.get("category", "")),
@@ -82,7 +82,7 @@ class QuarantineEntry:
 
 @dataclass(slots=True)
 class RestoreResult:
-    """Hasil pemulihan satu aksi karantina."""
+    """Result of restoring one quarantine action."""
 
     action_id: str
     restored: int = 0
@@ -93,7 +93,7 @@ class RestoreResult:
 
 
 class QuarantineStore:
-    """Menyimpan item di ``~/.local/share/ubuclean/quarantine``."""
+    """Stores items in ``~/.local/share/ubuclean/quarantine``."""
 
     def __init__(self, root: Path, home: Path, *, retention_days: int = 7) -> None:
         self.root = Path(root)
@@ -101,14 +101,14 @@ class QuarantineStore:
         self.retention_days = max(1, int(retention_days))
 
     def ensure(self) -> None:
-        """Buat direktori karantina dengan izin 0700."""
+        """Create the quarantine directory with 0700 permissions."""
         self.root.mkdir(parents=True, exist_ok=True)
         os.chmod(self.root, 0o700)
 
     def _action_dir(self, action_id: str) -> Path:
-        """Direktori satu aksi; tolak id yang mencoba keluar dari root."""
+        """Directory of one action; rejects ids that try to escape the root."""
         if not re.fullmatch(r"[A-Za-z0-9_.-]+", action_id):
-            raise QuarantineError("ID karantina tidak valid.")
+            raise QuarantineError("Invalid quarantine ID.")
         return self.root / action_id
 
     def _meta_path(self, action_dir: Path) -> Path:
@@ -145,7 +145,7 @@ class QuarantineStore:
             return None
 
     def _valid_restore(self, original: Path) -> bool:
-        """Tujuan pemulihan: di dalam home, bukan kunci SSH/GPG."""
+        """Restore destination: inside home, and not an SSH/GPG key."""
         try:
             resolved = original.resolve(strict=False)
         except OSError:
@@ -159,7 +159,7 @@ class QuarantineStore:
         return True
 
     def _valid_source(self, source: Path) -> bool:
-        """Sumber karantina: tidak boleh data pribadi atau kunci rahasia."""
+        """Quarantine source: must not be personal data or a secret key."""
         if not self._valid_restore(source):
             return False
         for name in HOME_PERSONAL_DIRS:
@@ -182,11 +182,11 @@ class QuarantineStore:
         action_id: str | None = None,
         original_overrides: Mapping[str, Path] | None = None,
     ) -> QuarantineEntry | None:
-        """Pindahkan ``paths`` ke karantina dan tulis metadata.
+        """Move ``paths`` into quarantine and write the metadata.
 
-        ``original_overrides`` memetakan path sumber ke lokasi asal sebenarnya
-        (dipakai Tong Sampah agar pemulihan kembali ke folder asal).
-        Mengembalikan ``None`` bila tidak ada item yang berhasil dipindahkan.
+        ``original_overrides`` maps a source path to its real original location
+        (used by the Trash so that a restore goes back to the original folder).
+        Returns ``None`` when no item was moved successfully.
         """
         self.ensure()
         action_id = action_id or (
@@ -207,10 +207,10 @@ class QuarantineStore:
             source = Path(source)
             try:
                 if not self._valid_source(source):
-                    entry.errors.append(f"Path tidak layak dikarantina: {source}")
+                    entry.errors.append(f"Path is not eligible for quarantine: {source}")
                     continue
                 if not os.path.lexists(source):
-                    entry.errors.append(f"Tidak ditemukan: {source}")
+                    entry.errors.append(f"Not found: {source}")
                     continue
                 size = path_size(source)
                 stored = files_dir / f"{index:04d}-{self._safe_name(source)}"
@@ -237,7 +237,7 @@ class QuarantineStore:
 
     @staticmethod
     def _move(source: Path, stored: Path) -> None:
-        """Pindahkan item; fallback copy lintas filesystem."""
+        """Move an item; falls back to a copy across filesystems."""
         stored.parent.mkdir(parents=True, exist_ok=True)
         try:
             os.replace(source, stored)
@@ -246,13 +246,13 @@ class QuarantineStore:
 
     @staticmethod
     def _unique_target(target: Path) -> Path:
-        """Cari nama alternatif bila target sudah ada."""
+        """Find an alternative name when the target already exists."""
         if not os.path.lexists(target):
             return target
         if target.is_dir():
-            suffix = " (dipulihkan)"
+            suffix = " (restored)"
         else:
-            suffix = " (dipulihkan)"
+            suffix = " (restored)"
         candidate = target.with_name(target.name + suffix)
         counter = 2
         while os.path.lexists(candidate):
@@ -261,7 +261,7 @@ class QuarantineStore:
         return candidate
 
     def list_actions(self) -> list[QuarantineEntry]:
-        """Semua aksi karantina, terbaru lebih dulu."""
+        """All quarantine actions, newest first."""
         if not self.root.is_dir():
             return []
         result: list[QuarantineEntry] = []
@@ -279,7 +279,7 @@ class QuarantineStore:
         return result
 
     def get(self, action_id: str) -> QuarantineEntry | None:
-        """Ambil satu aksi berdasarkan id, atau ``None``."""
+        """Get a single action by id, or ``None``."""
         try:
             action_dir = self._action_dir(action_id)
         except QuarantineError:
@@ -287,10 +287,10 @@ class QuarantineStore:
         return self._read_meta(action_dir)
 
     def restore(self, action_id: str, *, dry_run: bool = False) -> RestoreResult:
-        """Kembalikan semua item ke path aslinya."""
+        """Restore all items to their original paths."""
         entry = self.get(action_id)
         if entry is None:
-            return RestoreResult(action_id=action_id, failed=1, errors=["Aksi tidak ditemukan."])
+            return RestoreResult(action_id=action_id, failed=1, errors=["Action not found."])
         action_dir = self._action_dir(action_id)
         result = RestoreResult(action_id=action_id, dry_run=dry_run)
         remaining: list[QuarantineItem] = []
@@ -301,12 +301,12 @@ class QuarantineStore:
             original = Path(item.original)
             if not self._valid_restore(original):
                 result.failed += 1
-                result.errors.append(f"Path asal dilindungi: {original}")
+                result.errors.append(f"Original path is protected: {original}")
                 remaining.append(item)
                 continue
             if not os.path.lexists(stored):
                 result.failed += 1
-                result.errors.append(f"File karantina hilang: {stored.name}")
+                result.errors.append(f"Quarantine file is missing: {stored.name}")
                 remaining.append(item)
                 continue
             target = self._unique_target(original)
@@ -333,7 +333,7 @@ class QuarantineStore:
         return result
 
     def delete_action(self, action_id: str) -> bool:
-        """Hapus permanen satu aksi karantina."""
+        """Permanently delete one quarantine action."""
         try:
             action_dir = self._action_dir(action_id)
         except QuarantineError:
@@ -344,7 +344,7 @@ class QuarantineStore:
         return True
 
     def purge_expired(self, *, now: float | None = None) -> list[str]:
-        """Hapus aksi yang lebih tua dari masa retensi; kembalikan id-nya."""
+        """Delete actions older than the retention period; return their ids."""
         now = time.time() if now is None else now
         cutoff = now - self.retention_days * 86400
         removed: list[str] = []
@@ -355,7 +355,7 @@ class QuarantineStore:
         return removed
 
     def purge_all(self) -> list[str]:
-        """Hapus seluruh isi karantina."""
+        """Delete the entire contents of the quarantine."""
         removed: list[str] = []
         for entry in self.list_actions():
             if self.delete_action(entry.action_id):
@@ -363,9 +363,9 @@ class QuarantineStore:
         return removed
 
     def total_bytes(self) -> int:
-        """Total ukuran semua item karantina."""
+        """Total size of all quarantine items."""
         return sum(entry.total_bytes for entry in self.list_actions())
 
     def size_bytes(self) -> int:
-        """Ukuran nyata direktori karantina (termasuk metadata)."""
+        """Actual size of the quarantine directory (including metadata)."""
         return path_size(self.root)

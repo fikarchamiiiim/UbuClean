@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Shell(.venv/bin/python:*)"
+    ],
+    "deny": [],
+    "defaultMode": "default"
+  }
+}

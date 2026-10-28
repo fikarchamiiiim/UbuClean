@@ -1,60 +1,60 @@
 # UbuClean
 
-Pembersih sistem, pemantau, dan perawatan untuk **Ubuntu Desktop 24.04** (GNOME, Wayland/X11). Antarmuka GTK4 + libadwaita 1.5, teks sepenuhnya Bahasa Indonesia.
+System cleaner, monitor, and maintenance tool for **Ubuntu Desktop 24.04** (GNOME, Wayland/X11). GTK4 + libadwaita 1.5 interface, with text entirely in English.
 
-UbuClean dirancang dengan alur **pindai → pratinjau → konfirmasi → eksekusi**. GUI tidak pernah berjalan sebagai root; operasi sistem dipisahkan ke helper CLI yang dipanggil lewat `pkexec` dan hanya menerima aksi dari whitelist.
-
----
-
-## Fitur
-
-1. **Pembersih sampah** — cache apt, paket tak terpakai, kernel lama, revisi snap, runtime Flatpak, journald, crash report, cache pengguna, cache browser (opsional), file lama `/tmp`, dan Tong Sampah. Setiap kategori menampilkan estimasi ukuran dan daftar item yang bisa diperiksa.
-2. **Clear RAM** — statistik RAM/swap/cache sebelum dan sesudah, `sync` + `drop_caches` level 1/2/3, serta segarkan swap yang hanya berjalan bila RAM bebas cukup.
-3. **Monitor sistem** — CPU per-core, RAM, swap, disk, jaringan, suhu, grafik 60 detik, dan daftar proses teratas dengan konfirmasi sebelum mengakhiri proses. Proses sistem kritis selalu ditolak.
-4. **Analisis disk** — pemindaian folder di thread terpisah dengan progress dan tombol batal, treemap, daftar folder/file terbesar, dan pencari duplikat tiga tahap (ukuran → hash parsial → hash penuh). File duplikat hanya dipindahkan ke Trash lewat Gio dan tidak pernah dihapus otomatis.
-5. **Kelola startup** — autostart XDG dari `~/.config/autostart` dan `/etc/xdg/autostart`, plus user service systemd. Entri sistem dinonaktifkan lewat override pengguna tanpa menghapus berkas asli.
-6. **Jadwal otomatis** — pembuatan/penghapusan `ubuclean-clean.timer` systemd user, pilihan kategori, dan mode headless `ubuclean --run-scheduled`.
-7. **Beranda & Smart Clean** — ring Skor Kesehatan Sistem 0–100, kartu Disk/RAM/CPU/Sampah, rekomendasi relevan, dan pemindaian cepat.
-8. **Karantina (undo)** — item dari kategori aman dipindahkan ke `~/.local/share/ubuclean/quarantine` selama 7 hari (dapat diatur) dan dapat dipulihkan dari halaman Riwayat. Kategori yang tidak masuk akal dikarantina (cache apt, journald, snap) dijelaskan di UI.
-9. **Pembersih developer** — Docker per jenis objek (image dangling, container berhenti, volume, build cache), cache pip/npm/yarn/pnpm/cargo/gradle/Go, serta pencarian `node_modules`, `__pycache__`, `target/`, dan `.venv` pada proyek yang lama tidak disentuh.
-10. **Uninstaller aplikasi** — daftar apt/snap/flatpak dengan ukuran, versi, dan tanggal pemasangan, pencarian dan filter sumber, proteksi paket inti, peringatan dependen, serta tawaran pembersihan sisa konfigurasi dengan pratinjau.
-11. **Notifikasi pintar** — user service ringan yang memantau disk dan RAM, memberi notifikasi dengan aksi “Bersihkan sekarang” / “Buka monitor”, lengkap dengan cooldown, ambang, dan mode bisu.
+UbuClean is built around a **scan → preview → confirm → execute** flow. The GUI never runs as root; system operations are isolated in a CLI helper invoked through `pkexec` that only accepts whitelisted actions.
 
 ---
 
-## Kebutuhan sistem
+## Features
+
+1. **Junk cleaner** — apt cache, unused packages, old kernels, snap revisions, Flatpak runtimes, journald, crash reports, user caches, browser caches (optional), old files in `/tmp`, and Trash. Each category shows an estimated size and a list of items you can review.
+2. **Clear RAM** — RAM/swap/cache statistics before and after, `sync` + `drop_caches` level 1/2/3, plus swap refresh that only runs when enough free RAM is available.
+3. **System monitor** — per-core CPU, RAM, swap, disk, network, temperature, a 60-second graph, and a list of top processes with confirmation before ending a process. Critical system processes are always refused.
+4. **Disk analysis** — folder scanning on a separate thread with progress and a cancel button, treemap, list of the largest folders/files, and a three-stage duplicate finder (size → partial hash → full hash). Duplicate files are only moved to Trash through Gio and are never deleted automatically.
+5. **Startup management** — XDG autostart from `~/.config/autostart` and `/etc/xdg/autostart`, plus systemd user services. System entries are disabled through user overrides without deleting the original files.
+6. **Automatic schedule** — create/remove the systemd user `ubuclean-clean.timer`, choose categories, and run headless with `ubuclean --run-scheduled`.
+7. **Home & Smart Clean** — System Health Score ring from 0–100, Disk/RAM/CPU/Junk cards, relevant recommendations, and a quick scan.
+8. **Quarantine (undo)** — items from safe categories are moved to `~/.local/share/ubuclean/quarantine` for 7 days (configurable) and can be restored from the History page. Categories that make no sense to quarantine (apt cache, journald, snap) are explained in the UI.
+9. **Developer cleaner** — Docker per object type (dangling images, stopped containers, volumes, build cache), pip/npm/yarn/pnpm/cargo/gradle/Go caches, and discovery of `node_modules`, `__pycache__`, `target/`, and `.venv` in projects that have not been touched for a long time.
+10. **Application uninstaller** — apt/snap/flatpak list with size, version, and install date, search and source filters, core package protection, dependent warnings, and an offer to clean up leftover configuration with a preview.
+11. **Smart notifications** — a lightweight user service that watches disk and RAM, notifies with “Clean now” / “Open monitor” actions, complete with cooldown, thresholds, and mute mode.
+
+---
+
+## System requirements
 
 - Ubuntu Desktop 24.04 (Python 3.12, GTK 4.14, libadwaita 1.5)
-- Paket apt:
+- apt packages:
 
 ```bash
 sudo apt install python3-gi python3-gi-cairo python3-psutil \
   gir1.2-gtk-4.0 gir1.2-adw-1 libnotify-bin psmisc policykit-1
 ```
 
-`python3-gi-cairo` wajib untuk ring skor dan grafik Cairo. Jika tidak ada, aplikasi tetap berjalan tetapi grafik diganti tooltip peringatan.
+`python3-gi-cairo` is required for the score ring and the Cairo charts. Without it the application still runs, but the charts are replaced by a warning tooltip.
 
-`psutil` dibutuhkan untuk UI dan monitor; `install.sh` memasangnya. `pytest` hanya untuk pengembangan dan tidak dipasang oleh installer (gunakan venv di bawah atau `sudo apt install python3-pytest`).
+`psutil` is required for the UI and the monitor; `install.sh` installs it. `pytest` is for development only and is not installed by the installer (use the venv below or `sudo apt install python3-pytest`).
 
-## Instalasi
+## Installation
 
-### Script instal
+### Install script
 
 ```bash
 git clone <repo> ubuclean
 cd ubuclean
-sudo ./install.sh            # pasang dependensi + aplikasi
-sudo ./install.sh --dry-run  # lihat langkah tanpa mengubah sistem
-sudo ./install.sh --no-deps  # lewati apt, jika dependensi sudah ada
+sudo ./install.sh            # install dependencies + application
+sudo ./install.sh --dry-run  # show the steps without changing the system
+sudo ./install.sh --no-deps  # skip apt, when dependencies are already present
 ```
 
-Setelah selesai, jalankan **UbuClean** dari menu aplikasi atau:
+When it finishes, launch **UbuClean** from the application menu or run:
 
 ```bash
 ubuclean
 ```
 
-### Paket .deb
+### .deb package
 
 ```bash
 ./packaging/build-deb.sh
@@ -64,11 +64,11 @@ sudo apt install ./dist/ubuclean_1.0.0_all.deb
 ### Uninstall
 
 ```bash
-sudo ./uninstall.sh         # pertahankan konfigurasi, log, dan karantina
-sudo ./uninstall.sh --purge # hapus juga data pengguna
+sudo ./uninstall.sh         # keep configuration, logs, and quarantine
+sudo ./uninstall.sh --purge # also delete user data
 ```
 
-## Menjalankan dari source (pengembangan)
+## Running from source (development)
 
 ```bash
 python3 -m venv --system-site-packages .venv
@@ -76,13 +76,13 @@ python3 -m venv --system-site-packages .venv
 .venv/bin/python -m ubuclean
 ```
 
-Atau gunakan launcher pengembangan:
+Or use the development launcher:
 
 ```bash
 bin/ubuclean
 ```
 
-Helper root tidak dijalankan langsung saat pengembangan; pemanggilan `pkexec` memakai helper terpasang. Untuk menguji helper tanpa pkexec (hanya root):
+The root helper is not run directly during development; `pkexec` calls use the installed helper. To test the helper without pkexec (root only):
 
 ```bash
 sudo UBUCLEAN_HELPER_ALLOW_ROOT=1 python3 -m ubuclean.helper clean-tmp 7
@@ -91,77 +91,77 @@ sudo UBUCLEAN_HELPER_ALLOW_ROOT=1 python3 -m ubuclean.helper clean-tmp 7
 ## CLI
 
 ```bash
-ubuclean                          # buka GUI
+ubuclean                          # open the GUI
 ubuclean --version
-ubuclean --page clean             # buka GUI langsung di halaman tertentu
+ubuclean --page clean             # open the GUI directly on a specific page
 
-ubuclean scan --all --json        # pindai semua kategori, keluarkan JSON
+ubuclean scan --all --json        # scan all categories, output JSON
 ubuclean scan --category user-cache
-ubuclean clean --category user-cache --dry-run   # pratinjau tanpa perubahan
-ubuclean clean --category user-cache --yes       # eksekusi non-interaktif
-ubuclean status                   # ringkasan RAM/swap/disk/CPU
+ubuclean clean --category user-cache --dry-run   # preview without changes
+ubuclean clean --category user-cache --yes       # non-interactive execution
+ubuclean status                   # RAM/swap/disk/CPU summary
 ubuclean history --json
 
-ubuclean --run-scheduled          # dipakai systemd timer (headless)
-ubuclean --watch                  # pemantau notifikasi
+ubuclean --run-scheduled          # used by the systemd timer (headless)
+ubuclean --watch                  # notification watcher
 ```
 
-Macam kategori: `apt-cache`, `apt-autoremove`, `kernels`, `snap-revisions`, `flatpak-unused`, `journal`, `crash`, `tmp`, `user-cache`, `browser-cache`, `trash`, `dev-docker`, `dev-caches`, `dev-projects`.
+Category ids: `apt-cache`, `apt-autoremove`, `kernels`, `snap-revisions`, `flatpak-unused`, `journal`, `crash`, `tmp`, `user-cache`, `browser-cache`, `trash`, `dev-docker`, `dev-caches`, `dev-projects`.
 
-Jadwal headless **tidak** menjalankan operasi yang membutuhkan autentikasi root. Kategori seperti cache apt, journald, snap, dan `/tmp` yang butuh root akan dicatat sebagai “dilewati” di log dan ringkasan notifikasi. Kategori berisiko (kernel lama, cache browser) tidak pernah dijadwalkan.
+The headless schedule does **not** run operations that require root authentication. Categories such as apt cache, journald, snap, and `/tmp` that need root are recorded as “skipped” in the log and in the notification summary. Risky categories (old kernels, browser cache) are never scheduled.
 
-## Keamanan
+## Security
 
-- **GUI menolak root**; `ubuclean` mengembalikan kode error bila dijalankan dengan `euid == 0`.
-- **Whitelist path** di `ubuclean/core/paths.py`: hanya `~/.cache/**`, `~/.local/share/Trash/**`, karantina UbuClean, `/tmp/**`, dan `/var/crash/**`. Direktori home, `/`, `/etc`, `/boot`, `/usr`, `/var`, data pribadi (Documents/Pictures/…), `.ssh`, `.gnupg`, dan `.config` ditolak.
-- Symlink di-resolve sebelum validasi dan tidak pernah diikuti saat penghapusan.
-- **Helper** hanya menerima subcommand whitelist dengan validasi regex/rentang; tidak ada perintah bebas dan tidak ada `shell=True` di seluruh proyek.
-- **Polkit** action `com.ubuclean.helper.run` (`auth_admin_keep`) dengan pesan Bahasa Indonesia dan path helper yang di-annotate.
-- **Preview token**: eksekusi hanya diterima untuk preview yang dipindai pada sesi yang sama, sehingga penghapusan tanpa pratinjau tidak mungkin.
-- **Kernel**: kernel yang sedang berjalan dan minimal satu kernel cadangan selalu dipertahankan; helper memverifikasi ulang sebelum purge.
-- **Karantina**: item aman dipindahkan dulu; pemulihan mengembalikan ke path asli dan memberi nama alternatif bila bentrok.
-- Setiap aksi dicatat ke `~/.local/state/ubuclean/log` (JSON Lines) dengan waktu, kategori, jumlah item, ukuran, hasil, dan error.
+- **The GUI refuses root**; `ubuclean` returns an error code when started with `euid == 0`.
+- **Path whitelist** in `ubuclean/core/paths.py`: only `~/.cache/**`, `~/.local/share/Trash/**`, the UbuClean quarantine, `/tmp/**`, and `/var/crash/**`. The home directory, `/`, `/etc`, `/boot`, `/usr`, `/var`, personal data (Documents/Pictures/…), `.ssh`, `.gnupg`, and `.config` are refused.
+- Symlinks are resolved before validation and are never followed during deletion.
+- **The helper** only accepts whitelisted subcommands with regex/range validation; there are no free-form commands and no `shell=True` anywhere in the project.
+- **Polkit** action `com.ubuclean.helper.run` (`auth_admin_keep`) with an English message and an annotated helper path.
+- **Preview token**: execution is only accepted for a preview scanned in the same session, so deletion without a preview is impossible.
+- **Kernels**: the running kernel and at least one backup kernel are always kept; the helper re-verifies this before purging.
+- **Quarantine**: safe items are moved first; restoring returns them to their original path and gives them an alternative name on conflicts.
+- Every action is logged to `~/.local/state/ubuclean/log` (JSON Lines) with time, category, item count, size, result, and errors.
 
-## Struktur proyek
+## Project structure
 
 ```
 ubuclean/
 ├── ubuclean/
 │   ├── core/          # cleaners, ram, monitor, disk, health, startup,
 │   │                  # scheduler, scheduled, notifier, uninstaller
-│   ├── helper/        # helper root + validasi whitelist
-│   ├── ui/            # halaman Adw, widget Cairo, style.css
-│   ├── data/          # .desktop, ikon, polkit policy, unit notifier
+│   ├── helper/        # root helper + whitelist validation
+│   ├── ui/            # Adw pages, Cairo widgets, style.css
+│   ├── data/          # .desktop, icon, polkit policy, notifier unit
 │   ├── config.py
 │   └── cli.py
-├── bin/               # launcher pengembangan
-├── tests/             # pytest, filesystem tiruan, FakeRunner
+├── bin/               # development launcher
+├── tests/             # pytest, fake filesystem, FakeRunner
 ├── packaging/         # build-deb.sh
 ├── install.sh
 ├── uninstall.sh
 └── README.md
 ```
 
-## Tes
+## Tests
 
 ```bash
 .venv/bin/pytest -q
 ```
 
-Tes tidak menyentuh sistem asli: filesystem memakai `tmp_path`, subprocess memakai `FakeRunner`, dan home diisolasi. Cakupan mencakup whitelist path, symlink escape, karantina/restore, pipeline preview/clean, cleaner user & sistem, guard kernel, RAM/swap, monitor, analisis disk & duplikat, startup, scheduler, headless, notifier, uninstaller, dan CLI.
+The tests never touch the real system: the filesystem uses `tmp_path`, subprocesses use `FakeRunner`, and home is isolated. Coverage includes the path whitelist, symlink escapes, quarantine/restore, the preview/clean pipeline, user & system cleaners, kernel guards, RAM/swap, the monitor, disk & duplicate analysis, startup, the scheduler, headless mode, the notifier, the uninstaller, and the CLI.
 
-## Catatan desain & batasan
+## Design notes & limitations
 
-- Karantina berada di disk yang sama, jadi ruang baru benar-benar bebas setelah retensi habis (7 hari default). UI membedakan “dipindahkan ke karantina” dan “dibebaskan”.
-- `drop_caches` hanya membuang cache yang akan terbentuk lagi; UI menampilkan catatan jujur dan tidak menjanjikan percepatan.
-- Pemindaian disk dan duplikat berjalan di thread pekerja dan dapat dibatalkan. Preview pembersihan tidak dapat dibatalkan di tengah jalan, tetapi item tetap bisa dipulihkan dari karantina.
-- Sensor suhu bergantung pada dukungan kernel/psutil; bila tidak tersedia, UI menampilkan “Sensor tidak tersedia”.
-- Operasi Docker memerlukan akses ke socket Docker (grup `docker`) atau autentikasi root lewat helper. `docker system prune -a` tidak pernah dipakai.
-- Notifikasi membutuhkan `libnotify-bin` (`notify-send`). Aksi notifikasi membuka halaman UbuClean yang sesuai.
-- Animasi mengikuti pengaturan “kurangi animasi”/`gtk-enable-animations`; mode gelap/terang mengikuti tema sistem.
-- `Adw.ShortcutsDialog` belum tersedia di libadwaita 1.5 (versi Ubuntu 24.04), sehingga F1 membuka dialog `Adw.Dialog` dengan isi pintasan yang setara.
-- Uninstaller dibuka dari tombol di header halaman Bersihkan atau dari Pengaturan → Aplikasi terpasang.
+- The quarantine lives on the same disk, so space is only truly freed once retention expires (7 days by default). The UI distinguishes between “moved to quarantine” and “freed”.
+- `drop_caches` only drops caches that will be rebuilt anyway; the UI shows an honest note and does not promise a speed boost.
+- Disk and duplicate scans run on worker threads and can be cancelled. A cleanup preview cannot be cancelled halfway, but items can still be restored from quarantine.
+- Temperature sensors depend on kernel/psutil support; when unavailable, the UI shows “Sensor unavailable”.
+- Docker operations require access to the Docker socket (the `docker` group) or root authentication through the helper. `docker system prune -a` is never used.
+- Notifications require `libnotify-bin` (`notify-send`). Notification actions open the corresponding UbuClean page.
+- Animations follow the “reduce animations”/`gtk-enable-animations` setting; dark/light mode follows the system theme.
+- `Adw.ShortcutsDialog` is not yet available in libadwaita 1.5 (the Ubuntu 24.04 version), so F1 opens an `Adw.Dialog` with equivalent shortcut content.
+- The uninstaller is opened from a button in the header of the Clean page or from Settings → Installed applications.
 
-## Lisensi
+## License
 
-GPL-3.0-or-later. Lihat `LICENSE`.
+GPL-3.0-or-later. See `LICENSE`.

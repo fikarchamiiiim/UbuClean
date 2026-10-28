@@ -151,7 +151,7 @@ def test_remove_auth_error(context: Context, fake_runner: FakeRunner) -> None:
     app = InstalledApp(id="gimp", name="gimp", source="apt")
     ok, message = service.remove(app)
     assert not ok
-    assert "dibatalkan" in message.lower()
+    assert "cancelled" in message.lower()
 
 
 def test_find_leftovers(context: Context) -> None:
@@ -180,7 +180,7 @@ def test_quarantine_leftovers(context: Context) -> None:
     assert entry.category_id == "uninstaller"
     assert not folder.exists()
     assert context.quarantine.get(entry.action_id) is not None
-    assert "karantina" in message
+    assert "quarantine" in message
 
 
 def test_quarantine_leftovers_rejects_outside(context: Context) -> None:
@@ -191,5 +191,5 @@ def test_quarantine_leftovers_rejects_outside(context: Context) -> None:
 
 
 def test_installed_at_text() -> None:
-    assert installed_at_text(None) == "Tanggal tidak tersedia"
+    assert installed_at_text(None) == "Date unavailable"
     assert "2026" in installed_at_text(time.mktime((2026, 1, 2, 0, 0, 0, 0, 0, -1)))

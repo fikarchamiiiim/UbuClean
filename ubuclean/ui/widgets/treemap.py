@@ -1,4 +1,4 @@
-"""Treemap sederhana untuk komposisi folder."""
+"""Simple treemap for folder composition."""
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ except ImportError:
 
 
 class Treemap(Gtk.DrawingArea):
-    """Kotak proporsional untuk item terbesar dalam satu folder."""
+    """Proportional tiles for the largest items in a folder."""
 
     def __init__(self, *, height: int = 240) -> None:
         super().__init__()
@@ -32,10 +32,10 @@ class Treemap(Gtk.DrawingArea):
             self.set_draw_func(self._draw)
         self._entries: list[tuple[str, int]] = []
         self.add_css_class("uc-chart")
-        set_accessible(self, "Treemap komposisi folder")
+        set_accessible(self, "Folder composition treemap")
 
     def set_entries(self, entries: Sequence[tuple[str, int]]) -> None:
-        """Perbarui daftar (label, ukuran) dan gambar ulang."""
+        """Update the (label, size) list and redraw."""
         self._entries = [
             (str(name), max(0, int(size))) for name, size in entries if size > 0
         ][:20]
@@ -49,7 +49,7 @@ class Treemap(Gtk.DrawingArea):
         try:
             self.update_property(
                 [Gtk.AccessibleProperty.LABEL],
-                [f"Treemap folder, total {format_bytes(total)}. Terbesar: {top}"],
+                [f"Folder treemap, total {format_bytes(total)}. Largest: {top}"],
             )
         except (AttributeError, TypeError):
             pass

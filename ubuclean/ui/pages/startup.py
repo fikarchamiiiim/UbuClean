@@ -1,4 +1,4 @@
-"""Halaman pengelola startup aplikasi dan user service."""
+"""Page for managing application startup and user services."""
 
 from __future__ import annotations
 
@@ -26,17 +26,17 @@ from ubuclean.ui.pages.base import BasePage
 
 
 class StartupPage(BasePage):
-    """Autostart XDG dan user service systemd dengan toggle aman."""
+    """XDG autostart and systemd user services with safe toggles."""
 
     def __init__(self, window: Any) -> None:
-        super().__init__("Startup", "Aplikasi yang berjalan saat login", maximum_width=900)
+        super().__init__("Startup", "Applications that run at login", maximum_width=900)
         self.window = window
         self.services = window.services
         self._entries: list[StartupEntry] = []
         self._busy = False
         self._toggling = False
 
-        refresh = icon_button("view-refresh-symbolic", "Muat ulang daftar startup")
+        refresh = icon_button("view-refresh-symbolic", "Reload startup list")
         refresh.connect("clicked", lambda *_: self.refresh())
         self.add_action(refresh)
 
@@ -45,26 +45,26 @@ class StartupPage(BasePage):
         info_card.add_css_class("uc-info")
         info_card.append(icon("dialog-information-symbolic", 20, css="uc-nav-icon"))
         text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2, hexpand=True)
-        text.append(label("Nonaktifkan tanpa menghapus", css="uc-section"))
+        text.append(label("Disable without deleting", css="uc-section"))
         text.append(
             label(
-                "Entri sistem dinonaktifkan lewat override di ~/.config/autostart, "
-                "sedangkan berkas asli di /etc/xdg/autostart tidak disentuh.",
+                "System entries are disabled through an override in ~/.config/autostart, "
+                "while the original files in /etc/xdg/autostart are left untouched.",
                 css="uc-subtle",
                 wrap=True,
             )
         )
         info_card.append(text)
         self.body.append(info_card)
-        self._count_label = label("Memuat daftar startup…", css="uc-subtle")
+        self._count_label = label("Loading startup list…", css="uc-subtle")
         self.body.append(self._count_label)
         self._desktop_group = Adw.PreferencesGroup(
-            title="Aplikasi autostart",
-            description="Entri dari ~/.config/autostart dan /etc/xdg/autostart.",
+            title="Autostart applications",
+            description="Entries from ~/.config/autostart and /etc/xdg/autostart.",
         )
         self._systemd_group = Adw.PreferencesGroup(
-            title="User service systemd",
-            description="Service pengguna yang aktif saat login.",
+            title="systemd user services",
+            description="User services that are active at login.",
         )
         self.body.append(self._desktop_group)
         self.body.append(self._systemd_group)
@@ -77,7 +77,7 @@ class StartupPage(BasePage):
         if self._busy:
             return
         self._busy = True
-        self._count_label.set_text("Memuat daftar startup…")
+        self._count_label.set_text("Loading startup list…")
 
         def work() -> list[StartupEntry]:
             return self.services.startup.list_entries()
@@ -89,8 +89,8 @@ class StartupPage(BasePage):
 
         def failed(exc: Exception) -> None:
             self._busy = False
-            self._count_label.set_text("Gagal memuat daftar startup.")
-            self.window.toast(f"Gagal memuat startup: {exc}")
+            self._count_label.set_text("Failed to load the startup list.")
+            self.window.toast(f"Failed to load startup: {exc}")
 
         run_async(work, done, failed)
 
@@ -106,15 +106,15 @@ class StartupPage(BasePage):
             for entry in desktop:
                 self._desktop_group.add(self._row(entry))
         else:
-            self._desktop_group.add(self._empty_row("Tidak ada aplikasi autostart."))
+            self._desktop_group.add(self._empty_row("No autostart applications."))
         if systemd:
             for entry in systemd:
                 self._systemd_group.add(self._row(entry))
         else:
-            self._systemd_group.add(self._empty_row("Tidak ada user service yang aktif."))
+            self._systemd_group.add(self._empty_row("No active user services."))
         enabled = sum(1 for entry in entries if entry.enabled)
         self._count_label.set_text(
-            f"{format_count(len(entries))} entri · {format_count(enabled)} aktif"
+            f"{format_count(len(entries))} entries · {format_count(enabled)} enabled"
         )
 
     @staticmethod
@@ -136,24 +136,24 @@ class StartupPage(BasePage):
             )
         )
         switch = Gtk.Switch(valign=Gtk.Align.CENTER, active=entry.enabled)
-        switch.set_tooltip_text(f"Aktifkan/nonaktifkan {entry.name}")
+        switch.set_tooltip_text(f"Enable/disable {entry.name}")
         switch.connect("notify::active", lambda sw, _pspec, item=entry: self._on_toggle(sw, item))
         row.add_suffix(switch)
-        source_row = action_row("Sumber", self._source_text(entry))
+        source_row = action_row("Source", self._source_text(entry))
         source_row.set_activatable(False)
         row.add_row(source_row)
         command_row = action_row(
-            "Perintah",
-            entry.command or "Tidak ada perintah Exec",
+            "Command",
+            entry.command or "No Exec command",
         )
         command_row.set_activatable(False)
         row.add_row(command_row)
         if entry.path is not None:
-            path_row = action_row("Berkas", str(entry.path))
+            path_row = action_row("File", str(entry.path))
             path_row.set_activatable(False)
             row.add_row(path_row)
         if entry.unit:
-            unit_row = action_row("Unit systemd", entry.unit)
+            unit_row = action_row("systemd unit", entry.unit)
             unit_row.set_activatable(False)
             row.add_row(unit_row)
         return row
@@ -163,8 +163,8 @@ class StartupPage(BasePage):
         if entry.is_systemd:
             return "systemd --user"
         if entry.is_system:
-            return "sistem" + (" · override pengguna" if entry.overridden else "")
-        return "pengguna"
+            return "system" + (" · user override" if entry.overridden else "")
+        return "user"
 
     def _on_toggle(self, switch: Gtk.Switch, entry: StartupEntry) -> None:
         if self._toggling:
@@ -194,6 +194,6 @@ class StartupPage(BasePage):
             self._toggling = False
             switch.set_sensitive(True)
             switch.set_active(original)
-            self.window.toast(f"Gagal mengubah startup: {exc}")
+            self.window.toast(f"Failed to change startup: {exc}")
 
         run_async(work, done, failed)

@@ -1,4 +1,4 @@
-"""Mode CLI UbuClean (tanpa membuka GUI)."""
+"""UbuClean CLI mode (without opening the GUI)."""
 
 from __future__ import annotations
 
@@ -21,73 +21,73 @@ def _positive_int(value: str) -> int:
     try:
         number = int(value)
     except ValueError as exc:
-        raise argparse.ArgumentTypeError("Harus berupa angka.") from exc
+        raise argparse.ArgumentTypeError("Must be a number.") from exc
     if number <= 0:
-        raise argparse.ArgumentTypeError("Harus lebih besar dari 0.")
+        raise argparse.ArgumentTypeError("Must be greater than 0.")
     return number
 
 
 def build_parser() -> argparse.ArgumentParser:
-    """Bangun parser argumen CLI."""
+    """Build the CLI argument parser."""
     parser = argparse.ArgumentParser(
         prog="ubuclean",
-        description="Pembersih sistem, pemantau, dan perawatan untuk Ubuntu Desktop.",
+        description="System cleaner, monitor, and maintenance for Ubuntu Desktop.",
     )
     parser.add_argument("--version", action="version", version=f"{constants.APP_NAME} {constants.VERSION}")
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Tampilkan rencana tanpa mengubah apa pun.",
+        help="Show the plan without changing anything.",
     )
     parser.add_argument(
         "--run-scheduled",
         action="store_true",
-        help="Jalankan pembersihan terjadwal tanpa membuka GUI.",
+        help="Run the scheduled cleanup without opening the GUI.",
     )
     parser.add_argument(
         "--watch",
         action="store_true",
-        help="Jalankan pemantau notifikasi di latar belakang.",
+        help="Run the notification watcher in the background.",
     )
     parser.add_argument(
         "--page",
         choices=("home", "clean", "monitor"),
         default=None,
-        help="Halaman awal saat GUI dibuka.",
+        help="Initial page when the GUI opens.",
     )
     subparsers = parser.add_subparsers(dest="command")
 
-    scan = subparsers.add_parser("scan", help="Pindai kategori dan tampilkan pratinjau.")
-    scan.add_argument("--category", action="append", choices=sorted(CATEGORY_MAP), help="Kategori yang dipindai (boleh berulang).")
-    scan.add_argument("--all", action="store_true", help="Pindai semua kategori.")
-    scan.add_argument("--json", action="store_true", help="Keluarkan JSON.")
+    scan = subparsers.add_parser("scan", help="Scan categories and show a preview.")
+    scan.add_argument("--category", action="append", choices=sorted(CATEGORY_MAP), help="Categories to scan (may be repeated).")
+    scan.add_argument("--all", action="store_true", help="Scan all categories.")
+    scan.add_argument("--json", action="store_true", help="Output JSON.")
     scan.add_argument(
         "--dry-run",
         action="store_true",
         dest="dry_run",
         default=argparse.SUPPRESS,
-        help="Tidak mengubah apa pun (default untuk scan).",
+        help="Change nothing (default for scan).",
     )
 
-    clean = subparsers.add_parser("clean", help="Pindai lalu bersihkan setelah konfirmasi.")
-    clean.add_argument("--category", action="append", choices=sorted(CATEGORY_MAP), help="Kategori yang dibersihkan.")
-    clean.add_argument("--all", action="store_true", help="Bersihkan semua kategori.")
-    clean.add_argument("--yes", "-y", action="store_true", help="Lewati prompt konfirmasi.")
-    clean.add_argument("--json", action="store_true", help="Keluarkan JSON.")
+    clean = subparsers.add_parser("clean", help="Scan, then clean after confirmation.")
+    clean.add_argument("--category", action="append", choices=sorted(CATEGORY_MAP), help="Categories to clean.")
+    clean.add_argument("--all", action="store_true", help="Clean all categories.")
+    clean.add_argument("--yes", "-y", action="store_true", help="Skip the confirmation prompt.")
+    clean.add_argument("--json", action="store_true", help="Output JSON.")
     clean.add_argument(
         "--dry-run",
         action="store_true",
         dest="dry_run",
         default=argparse.SUPPRESS,
-        help="Tampilkan rencana tanpa mengubah apa pun.",
+        help="Show the plan without changing anything.",
     )
 
-    status = subparsers.add_parser("status", help="Tampilkan kondisi sistem.")
-    status.add_argument("--json", action="store_true", help="Keluarkan JSON.")
+    status = subparsers.add_parser("status", help="Show system status.")
+    status.add_argument("--json", action="store_true", help="Output JSON.")
 
-    history = subparsers.add_parser("history", help="Tampilkan riwayat aksi.")
-    history.add_argument("--limit", type=_positive_int, default=20, help="Jumlah entri (default 20).")
-    history.add_argument("--json", action="store_true", help="Keluarkan JSON.")
+    history = subparsers.add_parser("history", help="Show action history.")
+    history.add_argument("--limit", type=_positive_int, default=20, help="Number of entries (default 20).")
+    history.add_argument("--json", action="store_true", help="Output JSON.")
 
     return parser
 
@@ -100,25 +100,25 @@ def _select_categories(args: argparse.Namespace) -> list[str]:
 
 def _print_previews(previews: dict[str, Any]) -> None:
     total = sum(preview.total_bytes for preview in previews.values())
-    print(f"Total yang bisa dibebaskan: {format_bytes(total)}")
+    print(f"Total reclaimable: {format_bytes(total)}")
     for category_id, preview in previews.items():
         category = CATEGORY_MAP[category_id]
         if not preview.supported:
-            print(f"  ! {category.label}: tidak tersedia")
+            print(f"  ! {category.label}: unavailable")
             for error in preview.errors:
                 print(f"      {error}")
             continue
-        print(f"  - {category.label}: {format_bytes(preview.total_bytes)} ({preview.item_count} item)")
+        print(f"  - {category.label}: {format_bytes(preview.total_bytes)} ({preview.item_count} item(s))")
         for note in preview.notes:
             print(f"      {note}")
 
 
 def _confirm() -> bool:
     if not sys.stdin.isatty():
-        print("Konfirmasi dibutuhkan. Jalankan ulang dengan --yes untuk mode non-interaktif.", file=sys.stderr)
+        print("Confirmation required. Re-run with --yes for non-interactive mode.", file=sys.stderr)
         return False
     try:
-        answer = input("Lanjutkan pembersihan? [y/N] ").strip().lower()
+        answer = input("Continue with the cleanup? [y/N] ").strip().lower()
     except EOFError:
         return False
     return answer in {"y", "ya", "yes"}
@@ -147,28 +147,28 @@ def _command_clean(args: argparse.Namespace, dry_run: bool) -> int:
     if not args.json:
         _print_previews(previews)
     if not dry_run and not args.yes and not _confirm():
-        print("Dibatalkan.", file=sys.stderr)
+        print("Cancelled.", file=sys.stderr)
         return 2
     try:
         report = assistant.clean(previews, dry_run=dry_run)
     except PreviewRequired as exc:
-        print(f"Ditolak: {exc}", file=sys.stderr)
+        print(f"Rejected: {exc}", file=sys.stderr)
         return 3
     if args.json:
         print(json.dumps(report.to_dict(), ensure_ascii=False, indent=2))
         return 0
-    action = "Pratinjau" if dry_run else "Dibersihkan"
+    action = "Preview" if dry_run else "Cleaned"
     print(f"{action}: {format_bytes(report.freed_bytes)}")
     for outcome in report.outcomes:
         category = CATEGORY_MAP.get(outcome.category_id)
         label = category.label if category else outcome.category_id
-        print(f"  - {label}: {format_bytes(outcome.freed_bytes)} ({outcome.removed} item)")
+        print(f"  - {label}: {format_bytes(outcome.freed_bytes)} ({outcome.removed} item(s))")
         if outcome.quarantined:
-            print(f"      {format_bytes(outcome.quarantined_bytes)} dipindahkan ke karantina")
+            print(f"      {format_bytes(outcome.quarantined_bytes)} moved to quarantine")
         for error in outcome.errors:
             print(f"      ! {error}")
     if report.failures:
-        print(f"Selesai dengan {report.failures} kegagalan.", file=sys.stderr)
+        print(f"Finished with {report.failures} failure(s).", file=sys.stderr)
         return 1
     return 0
 
@@ -177,7 +177,7 @@ def _command_status(args: argparse.Namespace) -> int:
     try:
         import psutil
     except ImportError:
-        print("psutil belum terpasang. Jalankan: sudo apt install python3-psutil", file=sys.stderr)
+        print("psutil is not installed. Run: sudo apt install python3-psutil", file=sys.stderr)
         return 1
     paths = AppPaths.default()
     memory = psutil.virtual_memory()
@@ -218,14 +218,14 @@ def _command_history(args: argparse.Namespace) -> int:
         print(json.dumps([entry.to_dict() for entry in entries], ensure_ascii=False, indent=2))
         return 0
     if not entries:
-        print("Belum ada riwayat.")
+        print("No history yet.")
         return 0
     for entry in entries:
-        status = "OK" if entry.ok else "GAGAL"
-        marker = " (pratinjau)" if entry.dry_run else ""
+        status = "OK" if entry.ok else "FAILED"
+        marker = " (preview)" if entry.dry_run else ""
         print(
             f"{entry.to_dict()['time']}  {status}{marker}  {entry.label}: "
-            f"{format_bytes(entry.bytes)} · {entry.items} item"
+            f"{format_bytes(entry.bytes)} · {entry.items} item(s)"
         )
         for error in entry.errors:
             print(f"    ! {error}")
@@ -236,13 +236,13 @@ def _command_scheduled() -> int:
     from ubuclean.core.scheduled import run_scheduled
 
     outcome = run_scheduled(notify=True)
-    print(f"Pembersihan terjadwal: {format_bytes(outcome.freed_bytes)}")
+    print(f"Scheduled cleanup: {format_bytes(outcome.freed_bytes)}")
     if outcome.cleaned:
-        print("  Dibersihkan: " + ", ".join(outcome.cleaned))
+        print("  Cleaned: " + ", ".join(outcome.cleaned))
     if outcome.skipped:
-        print("  Dilewati: " + ", ".join(outcome.skipped))
+        print("  Skipped: " + ", ".join(outcome.skipped))
     if outcome.notified:
-        print("  Notifikasi desktop dikirim.")
+        print("  Desktop notification sent.")
     for error in outcome.errors:
         print(f"  ! {error}", file=sys.stderr)
     return 1 if outcome.errors else 0
@@ -269,7 +269,7 @@ def _command_watch() -> int:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """Titik masuk CLI; tanpa subcommand akan membuka GUI."""
+    """CLI entry point; with no subcommand it opens the GUI."""
     raw_argv = list(sys.argv[1:] if argv is None else argv)
     parser = build_parser()
     args = parser.parse_args(raw_argv)

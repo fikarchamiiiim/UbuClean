@@ -1,4 +1,4 @@
-"""Pembuatan dan pengelolaan systemd user timer untuk jadwal UbuClean."""
+"""Creation and management of the systemd user timers for UbuClean schedules."""
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ CALENDAR_PREFIX = {
 }
 
 SERVICE_TEMPLATE = """[Unit]
-Description=Pembersihan terjadwal UbuClean
+Description=UbuClean scheduled cleaning
 
 [Service]
 Type=oneshot
@@ -31,7 +31,7 @@ Nice=10
 IOSchedulingClass=idle
 """
 TIMER_TEMPLATE = """[Unit]
-Description=Timer pembersihan terjadwal UbuClean
+Description=UbuClean scheduled cleaning timer
 
 [Timer]
 OnCalendar={calendar} {time}:00
@@ -46,7 +46,7 @@ WantedBy=timers.target
 
 @dataclass(frozen=True, slots=True)
 class ScheduleStatus:
-    """Status unit timer pengguna."""
+    """Status of the user timer unit."""
 
     installed: bool
     enabled: bool
@@ -55,7 +55,7 @@ class ScheduleStatus:
 
 
 def default_exec_start() -> str:
-    """Perintah ExecStart untuk instalasi saat ini."""
+    """ExecStart command for the current installation."""
     found = shutil.which("ubuclean")
     if found:
         return found
@@ -66,16 +66,16 @@ def default_exec_start() -> str:
 
 
 def calendar_expression(frequency: str, time_text: str) -> str:
-    """Validasi input jadwal dan hasilkan OnCalendar systemd."""
+    """Validate the schedule input and produce the systemd OnCalendar value."""
     if frequency not in FREQUENCIES:
-        raise ValueError(f"Frekuensi tidak valid: {frequency}")
+        raise ValueError(f"Invalid frequency: {frequency}")
     if not TIME_RE.fullmatch(time_text):
-        raise ValueError(f"Waktu harus berformat HH:MM: {time_text}")
+        raise ValueError(f"The time must use the HH:MM format: {time_text}")
     return f"{CALENDAR_PREFIX[frequency]} {time_text}:00"
 
 
 class Scheduler:
-    """Membuat, menghapus, dan memeriksa systemd user timer UbuClean."""
+    """Creates, removes, and inspects UbuClean systemd user timers."""
 
     def __init__(
         self,
@@ -92,20 +92,20 @@ class Scheduler:
 
     @property
     def service_path(self) -> Path:
-        """Path unit service."""
+        """Path of the service unit."""
         return self.unit_dir / constants.SCHEDULE_SERVICE_NAME
 
     @property
     def timer_path(self) -> Path:
-        """Path unit timer."""
+        """Path of the timer unit."""
         return self.unit_dir / constants.SCHEDULE_TIMER_NAME
 
     def render_service(self) -> str:
-        """Isi unit service."""
+        """Contents of the service unit."""
         return SERVICE_TEMPLATE.format(exec_start=self.exec_start)
 
     def render_timer(self, frequency: str, time_text: str) -> str:
-        """Isi unit timer untuk frekuensi dan jam tertentu."""
+        """Contents of the timer unit for a given frequency and time."""
         return TIMER_TEMPLATE.format(
             calendar=CALENDAR_PREFIX[frequency],
             time=time_text,
@@ -131,7 +131,7 @@ class Scheduler:
                 os.unlink(handle.name)
 
     def install(self, frequency: str, time_text: str) -> tuple[bool, str]:
-        """Tulis unit, reload, lalu aktifkan timer."""
+        """Write the units, reload, then enable the timer."""
         try:
             calendar = calendar_expression(frequency, time_text)
             del calendar
@@ -141,21 +141,21 @@ class Scheduler:
             self._write(self.service_path, self.render_service())
             self._write(self.timer_path, self.render_timer(frequency, time_text))
         except OSError as exc:
-            return False, f"Gagal menulis unit systemd: {exc}"
+            return False, f"Failed to write the systemd unit: {exc}"
         reload_result = self.runner.run(["systemctl", "--user", "daemon-reload"], timeout=30)
         if reload_result.returncode != 0:
-            return False, reload_result.stderr.strip() or "systemctl daemon-reload gagal."
+            return False, reload_result.stderr.strip() or "systemctl daemon-reload failed."
         result = self.runner.run(
             ["systemctl", "--user", "enable", "--now", constants.SCHEDULE_TIMER_NAME],
             timeout=60,
         )
         if result.returncode != 0:
-            message = result.stderr.strip() or "Gagal mengaktifkan timer."
+            message = result.stderr.strip() or "Failed to enable the timer."
             return False, message
-        return True, "Jadwal pembersihan diaktifkan."
+        return True, "Cleaning schedule enabled."
 
     def uninstall(self) -> tuple[bool, str]:
-        """Nonaktifkan timer lalu hapus unit yang dibuat UbuClean."""
+        """Disable the timer, then remove the units created by UbuClean."""
         errors: list[str] = []
         if self.timer_path.exists():
             result = self.runner.run(
@@ -163,7 +163,7 @@ class Scheduler:
                 timeout=60,
             )
             if result.returncode != 0 and "not loaded" not in (result.stderr or "").lower():
-                errors.append(result.stderr.strip() or "Gagal menonaktifkan timer.")
+                errors.append(result.stderr.strip() or "Failed to disable the timer.")
         for path in (self.timer_path, self.service_path):
             try:
                 if path.exists() and "UbuClean" in path.read_text(encoding="utf-8", errors="replace"):
@@ -173,13 +173,13 @@ class Scheduler:
         self.runner.run(["systemctl", "--user", "daemon-reload"], timeout=30)
         if errors:
             return False, " ".join(errors)
-        return True, "Jadwal pembersihan dihapus."
+        return True, "Cleaning schedule removed."
 
     def status(self) -> ScheduleStatus:
-        """Status unit timer dan pesan ringkas."""
+        """Timer unit status and a short message."""
         installed = self.timer_path.exists() and self.service_path.exists()
         if not installed:
-            return ScheduleStatus(False, False, False, "Jadwal belum diatur.")
+            return ScheduleStatus(False, False, False, "No schedule has been set up yet.")
         enabled_result = self.runner.run(
             ["systemctl", "--user", "is-enabled", constants.SCHEDULE_TIMER_NAME], timeout=20
         )
@@ -189,9 +189,9 @@ class Scheduler:
         enabled = (enabled_result.stdout or "").strip() == "enabled"
         active = (active_result.stdout or "").strip() == "active"
         if enabled and active:
-            message = "Timer aktif."
+            message = "Timer is active."
         elif enabled:
-            message = "Timer diaktifkan tetapi belum berjalan."
+            message = "Timer is enabled but not running yet."
         else:
-            message = "Timer tidak aktif."
+            message = "Timer is not active."
         return ScheduleStatus(True, enabled, active, message)

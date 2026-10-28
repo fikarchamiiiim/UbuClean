@@ -1,4 +1,4 @@
-"""Pengelola aplikasi terpasang (apt, snap, flatpak) dan sisa konfigurasi."""
+"""Manager for installed applications (apt, snap, flatpak) and leftover configuration."""
 
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ LEFTOVER_ROOTS = (".config", ".cache", ".local/share")
 
 @dataclass(frozen=True, slots=True)
 class InstalledApp:
-    """Satu aplikasi terpasang dari apt, snap, atau flatpak."""
+    """An installed application from apt, snap, or flatpak."""
 
     id: str
     name: str
@@ -37,11 +37,11 @@ class InstalledApp:
 
     @property
     def protected(self) -> bool:
-        """True bila paket tidak boleh dihapus."""
+        """True when the package must not be removed."""
         return self.protected_reason is not None
 
     def as_dict(self) -> dict[str, object]:
-        """Representasi JSON-able."""
+        """JSON-able representation."""
         return {
             "id": self.id,
             "name": self.name,
@@ -57,7 +57,7 @@ class InstalledApp:
 
 @dataclass(frozen=True, slots=True)
 class Leftover:
-    """Sisa konfigurasi/cache milik aplikasi."""
+    """Leftover configuration/cache owned by an application."""
 
     path: Path
     size: int
@@ -65,16 +65,16 @@ class Leftover:
 
 
 def apt_protected_reason(package: str) -> str | None:
-    """Alasan paket apt tidak boleh dihapus."""
+    """Reason an apt package must not be removed."""
     if package in validate.PROTECTED_PACKAGES:
-        return "Paket inti sistem"
+        return "Core system package"
     if package.startswith(validate.PROTECTED_PREFIXES):
-        return "Paket kernel/boot inti"
+        return "Core kernel/boot package"
     return None
 
 
 def parse_dpkg_listing(output: str, info_dir: Path = Path("/var/lib/dpkg/info")) -> list[InstalledApp]:
-    """Parse output dpkg-query menjadi daftar aplikasi terpasang."""
+    """Parse dpkg-query output into a list of installed applications."""
     apps: list[InstalledApp] = []
     for line in output.splitlines():
         columns = line.split("\t")
@@ -109,7 +109,7 @@ def parse_dpkg_listing(output: str, info_dir: Path = Path("/var/lib/dpkg/info"))
 
 
 def parse_snap_listing(output: str, snap_dir: Path = Path("/var/lib/snapd/snaps")) -> list[InstalledApp]:
-    """Parse output ``snap list``."""
+    """Parse ``snap list`` output."""
     apps: list[InstalledApp] = []
     for line in output.splitlines()[1:]:
         columns = line.split()
@@ -126,7 +126,7 @@ def parse_snap_listing(output: str, snap_dir: Path = Path("/var/lib/snapd/snaps"
             except OSError:
                 continue
         protected = (
-            "Snap inti sistem"
+            "Core system snap"
             if name.startswith(SNAP_PROTECTED_PREFIXES) or name == "bare"
             else None
         )
@@ -151,7 +151,7 @@ def parse_flatpak_listing(
     home: Path,
     system_dir: Path = Path("/var/lib/flatpak/app"),
 ) -> list[InstalledApp]:
-    """Parse ``flatpak list --columns=application,name,version,size,origin``."""
+    """Parse ``flatpak list --columns=application,name,version,size,origin`` output."""
     apps: list[InstalledApp] = []
     for line in output.splitlines():
         columns = line.split("\t")
@@ -168,7 +168,7 @@ def parse_flatpak_listing(
                     break
             except OSError:
                 continue
-        protected = "Runtime/platform inti" if ".Platform" in app_id or ".BaseApp" in app_id else None
+        protected = "Core runtime/platform" if ".Platform" in app_id or ".BaseApp" in app_id else None
         apps.append(
             InstalledApp(
                 id=app_id,
@@ -186,7 +186,7 @@ def parse_flatpak_listing(
 
 
 class UninstallerService:
-    """Daftar paket, penghapusan lewat helper, dan pencarian sisa data."""
+    """Package listing, removal through the helper, and leftover data search."""
 
     def __init__(self, ctx: Context, runner: Runner | None = None) -> None:
         self.ctx = ctx
@@ -194,14 +194,14 @@ class UninstallerService:
 
     # -- listing -------------------------------------------------------
     def list_apt(self) -> list[InstalledApp]:
-        """Semua paket apt yang terpasang."""
+        """All installed apt packages."""
         result = self.runner.run(["dpkg-query", "-W", f"-f={DPKG_FORMAT}"], timeout=120)
         if result.returncode != 0:
             return []
         return parse_dpkg_listing(result.stdout or "")
 
     def list_snap(self) -> list[InstalledApp]:
-        """Semua snap yang terpasang."""
+        """All installed snaps."""
         if self.runner.which("snap") is None:
             return []
         result = self.runner.run(["snap", "list"], timeout=60)
@@ -210,7 +210,7 @@ class UninstallerService:
         return parse_snap_listing(result.stdout or "")
 
     def list_flatpak(self) -> list[InstalledApp]:
-        """Semua aplikasi Flatpak yang terpasang."""
+        """All installed Flatpak applications."""
         if self.runner.which("flatpak") is None:
             return []
         result = self.runner.run(
@@ -227,13 +227,13 @@ class UninstallerService:
         return parse_flatpak_listing(result.stdout or "", self.ctx.paths.home)
 
     def list_packages(self) -> list[InstalledApp]:
-        """Gabungan apt, snap, dan flatpak."""
+        """Combined apt, snap, and flatpak packages."""
         apps = self.list_apt() + self.list_snap() + self.list_flatpak()
         return sorted(apps, key=lambda app: (app.name.lower(), app.source))
 
     # -- removal -------------------------------------------------------
     def dependent_count(self, package: str) -> int:
-        """Perkiraan jumlah paket yang bergantung pada ``package``."""
+        """Approximate number of packages that depend on ``package``."""
         if not re.fullmatch(r"[a-z0-9][a-z0-9+.-]+", package):
             return 0
         result = self.runner.run(
@@ -251,9 +251,9 @@ class UninstallerService:
         return len(set(lines))
 
     def remove(self, app: InstalledApp) -> tuple[bool, str]:
-        """Hapus aplikasi lewat aksi helper yang sesuai."""
+        """Remove the application through the matching helper action."""
         if app.protected:
-            return False, app.protected_reason or "Paket inti sistem tidak boleh dihapus."
+            return False, app.protected_reason or "Core system packages cannot be removed."
         if app.source == "apt":
             args = ["apt-remove", validate.removable_package(app.id)]
         elif app.source == "snap":
@@ -261,17 +261,17 @@ class UninstallerService:
         elif app.source == "flatpak":
             args = ["flatpak-uninstall", validate.flatpak_ref(app.id)]
         else:
-            return False, "Sumber paket tidak dikenal."
+            return False, "Unknown package source."
         try:
             result = self.ctx.privileged.run(args, timeout=900)
         except PrivilegedError as exc:
             self._log_removal(app, False, str(exc))
             return False, str(exc)
         except Exception as exc:  # noqa: BLE001
-            self._log_removal(app, False, f"Penghapusan gagal: {exc}")
-            return False, f"Penghapusan gagal: {exc}"
-        self._log_removal(app, result.returncode == 0, f"{app.name} dihapus.")
-        return result.returncode == 0, f"{app.name} dihapus."
+            self._log_removal(app, False, f"Removal failed: {exc}")
+            return False, f"Removal failed: {exc}"
+        self._log_removal(app, result.returncode == 0, f"{app.name} removed.")
+        return result.returncode == 0, f"{app.name} removed."
 
     def _log_removal(self, app: InstalledApp, ok: bool, detail: str) -> None:
         try:
@@ -279,7 +279,7 @@ class UninstallerService:
                 HistoryEntry(
                     action="uninstall",
                     category=f"uninstall-{app.source}",
-                    label=f"Hapus {app.name}",
+                    label=f"Remove {app.name}",
                     items=1,
                     bytes=app.size,
                     ok=ok,
@@ -299,7 +299,7 @@ class UninstallerService:
         return names
 
     def find_leftovers(self, app: InstalledApp) -> list[Leftover]:
-        """Cari folder sisa di ~/.config, ~/.cache, dan ~/.local/share."""
+        """Find leftover folders in ~/.config, ~/.cache, and ~/.local/share."""
         candidates = self._candidate_names(app)
         leftovers: list[Leftover] = []
         for relative in LEFTOVER_ROOTS:
@@ -320,7 +320,7 @@ class UninstallerService:
         return leftovers
 
     def quarantine_leftovers(self, app: InstalledApp, paths: list[Path]) -> tuple[QuarantineEntry | None, str]:
-        """Pindahkan sisa konfigurasi ke karantina (bisa dipulihkan)."""
+        """Move leftover configuration into quarantine (it can be restored)."""
         safe: list[Path] = []
         home = self.ctx.paths.home.resolve()
         for path in paths:
@@ -339,27 +339,27 @@ class UninstallerService:
             safe.append(resolved)
         entry = self.ctx.quarantine.quarantine("uninstaller", safe)
         if entry is None:
-            return None, "Tidak ada sisa yang bisa dikarantina."
+            return None, "No leftovers could be quarantined."
         try:
             self.ctx.history.record(
                 HistoryEntry(
                     action="uninstall-leftovers",
                     category="uninstaller",
-                    label=f"Sisa {app.name}",
+                    label=f"Leftovers of {app.name}",
                     items=len(entry.items),
                     bytes=entry.total_bytes,
                     ok=True,
-                    detail="Sisa konfigurasi/cache dipindahkan ke karantina.",
+                    detail="Leftover configuration/cache moved to quarantine.",
                     quarantine_id=entry.action_id,
                 )
             )
         except OSError:
             pass
-        return entry, f"{len(entry.items)} folder dipindahkan ke karantina."
+        return entry, f"{len(entry.items)} folders moved to quarantine."
 
 
 def installed_at_text(timestamp: float | None) -> str:
-    """Format tanggal pemasangan untuk UI."""
+    """Format the installation date for the UI."""
     if not timestamp:
-        return "Tanggal tidak tersedia"
+        return "Date unavailable"
     return format_date(timestamp)

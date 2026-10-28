@@ -61,7 +61,7 @@ def test_swap_eligibility_insufficient(tmp_path: Path) -> None:
     write_meminfo(meminfo, available=100_000, swap_total=1_000_000, swap_free=100_000)
     result = check_swap_eligibility(meminfo)
     assert result.can_refresh is False
-    assert "tidak cukup" in result.message
+    assert "not enough" in result.message.lower()
 
 
 def test_swap_eligibility_unused(tmp_path: Path) -> None:
@@ -69,7 +69,7 @@ def test_swap_eligibility_unused(tmp_path: Path) -> None:
     write_meminfo(meminfo, available=1_000_000, swap_total=1_000_000, swap_free=1_000_000)
     result = check_swap_eligibility(meminfo)
     assert result.can_refresh is False
-    assert "tidak sedang dipakai" in result.message
+    assert "not currently in use" in result.message
 
 
 def test_swap_eligibility_missing(tmp_path: Path) -> None:
@@ -104,7 +104,7 @@ def test_drop_caches_auth_cancelled(context: Context, fake_runner) -> None:
     service = RamService(context, stats_provider=lambda: stats())
     outcome = service.drop_caches(1)
     assert outcome.ok is False
-    assert "dibatalkan" in outcome.errors[0].lower()
+    assert "cancelled" in outcome.errors[0].lower()
     assert context.history.entries()[0].ok is False
 
 
@@ -116,7 +116,7 @@ def test_swap_refresh_blocked_before_helper(
     service = RamService(context, stats_provider=lambda: stats(swap_used=900_000), meminfo_path=meminfo)
     outcome = service.swap_refresh()
     assert outcome.ok is False
-    assert "tidak cukup" in outcome.errors[0]
+    assert "not enough" in outcome.errors[0].lower()
     assert fake_runner.calls == []
 
 

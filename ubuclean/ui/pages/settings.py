@@ -1,4 +1,4 @@
-"""Halaman Pengaturan UbuClean."""
+"""UbuClean Settings page."""
 
 from __future__ import annotations
 
@@ -19,10 +19,10 @@ from ubuclean.ui.pages.base import BasePage
 
 
 class SettingsPage(BasePage):
-    """Preferensi karantina, pembersihan, developer, dan notifikasi."""
+    """Quarantine, cleaning, developer, and notification preferences."""
 
     def __init__(self, window: Any) -> None:
-        super().__init__("Pengaturan", "Preferensi pembersihan dan layanan latar", maximum_width=860)
+        super().__init__("Settings", "Cleaning and background service preferences", maximum_width=860)
         self.window = window
         self.services = window.services
         self.notifier_service = NotifierService(
@@ -68,13 +68,13 @@ class SettingsPage(BasePage):
     def _cleaning_group(self) -> Adw.PreferencesGroup:
         config = self.services.config
         group = Adw.PreferencesGroup(
-            title="Pembersihan",
-            description="Nilai ini dipakai saat memindai dan membersihkan.",
+            title="Cleaning",
+            description="These values are used when scanning and cleaning.",
         )
         group.add(
             self._spin(
-                "Umur file /tmp",
-                "Hanya file yang tidak diubah lebih lama dari ini yang dihapus.",
+                "/tmp file age",
+                "Only files not modified for longer than this are deleted.",
                 int(config.get("tmp_days", 7)),
                 1,
                 365,
@@ -83,8 +83,8 @@ class SettingsPage(BasePage):
         )
         group.add(
             self._spin(
-                "Umur log journald",
-                "Batas journalctl --vacuum-time.",
+                "journald log age",
+                "The journalctl --vacuum-time limit.",
                 int(config.get("journal_days", 14)),
                 1,
                 365,
@@ -93,8 +93,8 @@ class SettingsPage(BasePage):
         )
         group.add(
             self._spin(
-                "Retensi karantina",
-                "Item dihapus permanen setelah melewati umur ini.",
+                "Quarantine retention",
+                "Items are permanently deleted once they are older than this.",
                 int(config.get("quarantine_days", 7)),
                 1,
                 365,
@@ -103,8 +103,8 @@ class SettingsPage(BasePage):
         )
         group.add(
             self._spin(
-                "Umur proyek developer",
-                "Folder build dipindahkan hanya jika proyek lama tidak disentuh.",
+                "Developer project age",
+                "Build folders are moved only when a project has not been touched for this long.",
                 int(config.get("developer_days", 90)),
                 1,
                 3650,
@@ -112,15 +112,15 @@ class SettingsPage(BasePage):
             )
         )
         self._level_row = Adw.ComboRow(
-            title="Level drop caches",
-            subtitle="Nilai awal untuk halaman Memori.",
+            title="Drop caches level",
+            subtitle="Default value for the Memory page.",
         )
         self._level_row.set_model(
             Gtk.StringList.new(
                 [
                     "Level 1 — page cache",
                     "Level 2 — page cache + dentries/inodes",
-                    "Level 3 — semua cache",
+                    "Level 3 — all caches",
                 ]
             )
         )
@@ -138,10 +138,10 @@ class SettingsPage(BasePage):
 
     def _developer_group_widget(self) -> Adw.PreferencesGroup:
         group = Adw.PreferencesGroup(
-            title="Folder proyek developer",
+            title="Developer project folders",
             description=(
-                "Folder induk yang dipindai untuk node_modules, __pycache__, target/, dan .venv. "
-                "Hanya folder di dalam home yang bisa dikarantina."
+                "Parent folders scanned for node_modules, __pycache__, target/, and .venv. "
+                "Only folders inside home can be quarantined."
             ),
         )
         return group
@@ -150,25 +150,25 @@ class SettingsPage(BasePage):
         clear_group(self._developer_group)
         roots = list(self.services.config.get("developer_roots", []))
         for root in roots:
-            row = action_row(str(root), "Folder induk proyek")
+            row = action_row(str(root), "Project parent folder")
             row.add_prefix(icon("folder-symbolic", 16, css="uc-nav-icon"))
-            remove = icon_button("edit-delete-symbolic", f"Hapus {root} dari daftar")
+            remove = icon_button("edit-delete-symbolic", f"Remove {root} from the list")
             remove.set_valign(Gtk.Align.CENTER)
             remove.connect("clicked", lambda _button, value=root: self._remove_root(value))
             row.add_suffix(remove)
             self._developer_group.add(row)
         add_row = Adw.ActionRow(
-            title="Tambah folder",
-            subtitle="Pilih folder induk tempat proyek kamu berada.",
+            title="Add folder",
+            subtitle="Choose the parent folder where your projects live.",
         )
-        add_button = button("Pilih folder", icon_name="folder-open-symbolic", css=("flat",))
+        add_button = button("Select folder", icon_name="folder-open-symbolic", css=("flat",))
         add_button.set_valign(Gtk.Align.CENTER)
         add_button.connect("clicked", lambda *_: self._choose_root())
         add_row.add_suffix(add_button)
         self._developer_group.add(add_row)
 
     def _choose_root(self) -> None:
-        dialog = Gtk.FileDialog(title="Pilih folder induk proyek", modal=True)
+        dialog = Gtk.FileDialog(title="Select project parent folder", modal=True)
         try:
             dialog.set_initial_folder(Gio.File.new_for_path(str(self.services.paths.home)))
         except (AttributeError, GLib.Error):
@@ -188,7 +188,7 @@ class SettingsPage(BasePage):
             except OSError:
                 return
             if home not in resolved.parents and resolved != home:
-                self.window.toast("Pilih folder di dalam direktori home agar bisa dikarantina.")
+                self.window.toast("Choose a folder inside your home directory so it can be quarantined.")
                 return
             roots = [str(item) for item in self.services.config.get("developer_roots", [])]
             text = str(resolved)
@@ -210,15 +210,15 @@ class SettingsPage(BasePage):
 
     def _applications_group(self) -> Adw.PreferencesGroup:
         group = Adw.PreferencesGroup(
-            title="Aplikasi terpasang",
-            description="Uninstaller apt, snap, dan flatpak dengan pembersihan sisa konfigurasi.",
+            title="Installed applications",
+            description="Uninstaller for apt, snap, and flatpak with leftover configuration cleanup.",
         )
         row = Adw.ActionRow(
-            title="Kelola aplikasi terpasang",
-            subtitle="Cari aplikasi, lihat ukuran, dan hapus dengan pratinjau sisa data.",
+            title="Manage installed applications",
+            subtitle="Search applications, view sizes, and delete them with a preview of leftover data.",
         )
         row.add_prefix(icon("application-x-executable-symbolic", 16, css="uc-nav-icon"))
-        open_button = button("Buka", icon_name="system-search-symbolic", css=("flat",))
+        open_button = button("Open", icon_name="system-search-symbolic", css=("flat",))
         open_button.set_valign(Gtk.Align.CENTER)
         open_button.connect("clicked", lambda *_: self._open_uninstaller())
         row.add_suffix(open_button)
@@ -234,20 +234,20 @@ class SettingsPage(BasePage):
         config = self.services.config
         notifications = config.notifications
         group = Adw.PreferencesGroup(
-            title="Notifikasi pintar",
-            description="Ambang dan cooldown untuk pemantau latar.",
+            title="Smart notifications",
+            description="Thresholds and cooldown for the background watcher.",
         )
         self._notif_enabled = Adw.SwitchRow(
-            title="Notifikasi desktop",
-            subtitle="Kirim peringatan saat disk atau RAM melewati ambang.",
+            title="Desktop notifications",
+            subtitle="Send alerts when disk or RAM crosses a threshold.",
         )
         self._notif_enabled.set_active(bool(notifications.get("enabled", True)))
         self._notif_enabled.connect("notify::active", self._on_notif_enabled)
         group.add(self._notif_enabled)
 
         self._notif_muted = Adw.SwitchRow(
-            title="Bisukan sementara",
-            subtitle="Tidak mengirim notifikasi sampai dimatikan lagi.",
+            title="Mute temporarily",
+            subtitle="Send no notifications until this is turned off again.",
         )
         self._notif_muted.set_active(bool(notifications.get("muted", False)))
         self._notif_muted.connect("notify::active", self._on_notif_muted)
@@ -255,8 +255,8 @@ class SettingsPage(BasePage):
 
         group.add(
             self._spin(
-                "Ambang disk",
-                "Persentase pemakaian disk untuk memicu notifikasi.",
+                "Disk threshold",
+                "Disk usage percentage that triggers a notification.",
                 int(notifications.get("disk_threshold", 90)),
                 50,
                 99,
@@ -265,8 +265,8 @@ class SettingsPage(BasePage):
         )
         group.add(
             self._spin(
-                "Ambang RAM",
-                "Persentase RAM untuk memicu notifikasi.",
+                "RAM threshold",
+                "RAM percentage that triggers a notification.",
                 int(notifications.get("ram_threshold", 90)),
                 50,
                 99,
@@ -275,8 +275,8 @@ class SettingsPage(BasePage):
         )
         group.add(
             self._spin(
-                "Durasi RAM tinggi",
-                "RAM harus melewati ambang selama ini sebelum notifikasi dikirim.",
+                "High RAM duration",
+                "RAM must stay above the threshold for this long before a notification is sent.",
                 int(notifications.get("ram_sustained_minutes", 5)),
                 1,
                 1440,
@@ -285,8 +285,8 @@ class SettingsPage(BasePage):
         )
         group.add(
             self._spin(
-                "Jeda antar notifikasi",
-                "Jeda minimum antar notifikasi dengan jenis yang sama.",
+                "Time between notifications",
+                "Minimum gap between notifications of the same kind.",
                 int(notifications.get("cooldown_hours", 6)),
                 1,
                 168,
@@ -294,8 +294,8 @@ class SettingsPage(BasePage):
             )
         )
         self._watcher_row = Adw.SwitchRow(
-            title="Pemantau latar",
-            subtitle="Memeriksa disk dan RAM setiap menit lewat systemd user service.",
+            title="Background watcher",
+            subtitle="Checks disk and RAM every minute through a systemd user service.",
         )
         self._watcher_row.set_active(bool(notifications.get("watcher_enabled", False)))
         self._watcher_row.connect("notify::active", self._on_watcher_toggled)
@@ -343,34 +343,34 @@ class SettingsPage(BasePage):
             self._loading = True
             row.set_active(not desired)
             self._loading = False
-            self.window.toast(f"Gagal mengatur pemantau: {exc}")
+            self.window.toast(f"Failed to configure the watcher: {exc}")
 
         run_async(work, done, failed)
 
     def _about_group(self) -> Adw.PreferencesGroup:
-        group = Adw.PreferencesGroup(title="Bantuan dan data")
+        group = Adw.PreferencesGroup(title="Help and data")
         shortcuts_row = Adw.ActionRow(
-            title="Pintasan keyboard",
-            subtitle="Ctrl+R pindai · Ctrl+, pengaturan · F1 bantuan",
+            title="Keyboard shortcuts",
+            subtitle="Ctrl+R scan · Ctrl+, settings · F1 help",
         )
-        shortcuts_button = button("Buka", css=("flat",))
+        shortcuts_button = button("Open", css=("flat",))
         shortcuts_button.set_valign(Gtk.Align.CENTER)
         shortcuts_button.connect("clicked", lambda *_: self.window.show_help())
         shortcuts_row.add_suffix(shortcuts_button)
         group.add(shortcuts_row)
 
         log_row = Adw.ActionRow(
-            title="Lokasi log",
+            title="Log location",
             subtitle=str(self.services.paths.log_file),
         )
         log_row.set_activatable(False)
         group.add(log_row)
 
         about_row = Adw.ActionRow(
-            title="Tentang UbuClean",
-            subtitle="Versi, lisensi, dan tautan proyek.",
+            title="About UbuClean",
+            subtitle="Version, license, and project links.",
         )
-        about_button = button("Tentang", css=("flat",))
+        about_button = button("About", css=("flat",))
         about_button.set_valign(Gtk.Align.CENTER)
         about_button.connect("clicked", lambda *_: self.window.show_about())
         about_row.add_suffix(about_button)

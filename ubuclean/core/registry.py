@@ -1,4 +1,4 @@
-"""Registry kategori pembersihan UbuClean."""
+"""UbuClean cleaning category registry."""
 
 from __future__ import annotations
 
@@ -7,8 +7,8 @@ from ubuclean.core.models import Category, Group
 CATEGORIES: tuple[Category, ...] = (
     Category(
         id="apt-cache",
-        label="Cache apt",
-        description="Paket .deb yang sudah terpasang dan tidak lagi dibutuhkan.",
+        label="APT cache",
+        description=".deb packages that are already installed and no longer needed.",
         group=Group.SYSTEM,
         icon="package-x-generic-symbolic",
         privileged=True,
@@ -17,8 +17,8 @@ CATEGORIES: tuple[Category, ...] = (
     ),
     Category(
         id="apt-autoremove",
-        label="Paket tak terpakai",
-        description="Dependensi yang tidak lagi diperlukan oleh paket terpasang.",
+        label="Unused packages",
+        description="Dependencies that are no longer required by installed packages.",
         group=Group.SYSTEM,
         icon="system-software-update-symbolic",
         privileged=True,
@@ -26,8 +26,8 @@ CATEGORIES: tuple[Category, ...] = (
     ),
     Category(
         id="kernels",
-        label="Kernel lama",
-        description="Kernel lama akan dihapus, kecuali kernel yang sedang berjalan dan satu cadangan.",
+        label="Old kernels",
+        description="Old kernels will be removed, except the running kernel and one fallback.",
         group=Group.SYSTEM,
         icon="drive-harddisk-symbolic",
         privileged=True,
@@ -37,8 +37,8 @@ CATEGORIES: tuple[Category, ...] = (
     ),
     Category(
         id="snap-revisions",
-        label="Revisi snap lama",
-        description="Revisi snap yang sudah dinonaktifkan setelah pembaruan.",
+        label="Old snap revisions",
+        description="Snap revisions that were disabled after an update.",
         group=Group.SYSTEM,
         icon="application-x-executable-symbolic",
         privileged=True,
@@ -47,8 +47,8 @@ CATEGORIES: tuple[Category, ...] = (
     ),
     Category(
         id="flatpak-unused",
-        label="Runtime Flatpak tak terpakai",
-        description="Runtime dan extension Flatpak yang tidak dipakai aplikasi terpasang.",
+        label="Unused Flatpak runtimes",
+        description="Flatpak runtimes and extensions that are not used by installed applications.",
         group=Group.SYSTEM,
         icon="application-x-executable-symbolic",
         privileged=True,
@@ -56,8 +56,8 @@ CATEGORIES: tuple[Category, ...] = (
     ),
     Category(
         id="journal",
-        label="Log journald lama",
-        description="Log sistem yang lebih lama dari batas waktu yang dipilih.",
+        label="Old journald logs",
+        description="System logs older than the selected time limit.",
         group=Group.SYSTEM,
         icon="text-x-generic-symbolic",
         privileged=True,
@@ -66,8 +66,8 @@ CATEGORIES: tuple[Category, ...] = (
     ),
     Category(
         id="crash",
-        label="Laporan crash",
-        description="Laporan crash di /var/crash yang sudah tidak diperlukan.",
+        label="Crash reports",
+        description="Crash reports in /var/crash that are no longer needed.",
         group=Group.SYSTEM,
         icon="dialog-warning-symbolic",
         privileged=True,
@@ -75,8 +75,8 @@ CATEGORIES: tuple[Category, ...] = (
     ),
     Category(
         id="tmp",
-        label="File lama di /tmp",
-        description="File sementara yang tidak dipakai dan lebih tua dari batas hari.",
+        label="Old files in /tmp",
+        description="Temporary files that are unused and older than the day limit.",
         group=Group.SYSTEM,
         icon="folder-temp-symbolic",
         privileged=True,
@@ -85,8 +85,8 @@ CATEGORIES: tuple[Category, ...] = (
     ),
     Category(
         id="user-cache",
-        label="Cache aplikasi",
-        description="Cache di ~/.cache, termasuk thumbnail. Disimpan di karantina sebelum dihapus.",
+        label="Application cache",
+        description="Cache in ~/.cache, including thumbnails. Kept in quarantine before deletion.",
         group=Group.USER,
         icon="folder-symbolic",
         schedule_allowed=True,
@@ -95,8 +95,8 @@ CATEGORIES: tuple[Category, ...] = (
     ),
     Category(
         id="browser-cache",
-        label="Cache browser",
-        description="Cache Firefox, Chrome, dan Chromium. Profil dan riwayat tidak disentuh.",
+        label="Browser cache",
+        description="Firefox, Chrome, and Chromium caches. Profiles and history are not touched.",
         group=Group.USER,
         icon="web-browser-symbolic",
         risky=True,
@@ -106,8 +106,8 @@ CATEGORIES: tuple[Category, ...] = (
     ),
     Category(
         id="trash",
-        label="Tong sampah",
-        description="Isi Tong Sampah pengguna. Item dipindahkan ke karantina UbuClean.",
+        label="Trash",
+        description="Contents of the user's Trash. Items are moved to the UbuClean quarantine.",
         group=Group.USER,
         icon="user-trash-symbolic",
         schedule_allowed=True,
@@ -117,7 +117,7 @@ CATEGORIES: tuple[Category, ...] = (
     Category(
         id="dev-docker",
         label="Docker",
-        description="Image dangling, container berhenti, volume tak terpakai, dan build cache.",
+        description="Dangling images, stopped containers, unused volumes, and build cache.",
         group=Group.DEVELOPER,
         icon="utilities-terminal-symbolic",
         privileged=True,
@@ -126,8 +126,8 @@ CATEGORIES: tuple[Category, ...] = (
     ),
     Category(
         id="dev-caches",
-        label="Cache developer",
-        description="Cache pip, npm, yarn, pnpm, cargo, gradle, dan Go build.",
+        label="Developer caches",
+        description="pip, npm, yarn, pnpm, cargo, gradle, and Go build caches.",
         group=Group.DEVELOPER,
         icon="folder-download-symbolic",
         default_enabled=False,
@@ -136,8 +136,8 @@ CATEGORIES: tuple[Category, ...] = (
     ),
     Category(
         id="dev-projects",
-        label="Folder proyek lama",
-        description="node_modules, __pycache__, target/, dan .venv pada proyek yang lama tidak disentuh.",
+        label="Stale project folders",
+        description="node_modules, __pycache__, target/, and .venv in projects not touched for a long time.",
         group=Group.DEVELOPER,
         icon="folder-symbolic",
         default_enabled=False,
@@ -150,22 +150,22 @@ CATEGORY_MAP: dict[str, Category] = {category.id: category for category in CATEG
 
 
 def get_category(category_id: str) -> Category:
-    """Ambil kategori berdasarkan id, ``KeyError`` bila tidak dikenal."""
+    """Get a category by id, raises ``KeyError`` when unknown."""
     return CATEGORY_MAP[category_id]
 
 
 def categories_for_group(group: Group) -> list[Category]:
-    """Semua kategori dalam satu grup."""
+    """All categories in one group."""
     return [category for category in CATEGORIES if category.group is group]
 
 
 def default_selected_ids() -> list[str]:
-    """ID kategori yang tercentang saat pertama kali membuka pembersih."""
+    """IDs of the categories checked when the cleaner is first opened."""
     return [category.id for category in CATEGORIES if category.default_enabled]
 
 
 def scheduled_categories() -> list[Category]:
-    """Kategori yang boleh ikut jadwal otomatis (tidak berisiko)."""
+    """Categories that may be part of the automatic schedule (not risky)."""
     return [
         category
         for category in CATEGORIES
@@ -174,11 +174,11 @@ def scheduled_categories() -> list[Category]:
 
 
 def scheduled_ids() -> list[str]:
-    """ID kategori yang boleh ikut jadwal otomatis."""
+    """IDs of the categories allowed in the automatic schedule."""
     return [category.id for category in scheduled_categories()]
 
 
 def is_schedule_safe(category_id: str) -> bool:
-    """True bila kategori boleh dijalankan otomatis tanpa interaksi."""
+    """True when the category may run automatically without interaction."""
     category = CATEGORY_MAP.get(category_id)
     return bool(category and category.schedule_allowed and not category.risky)

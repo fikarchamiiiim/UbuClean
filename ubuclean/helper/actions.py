@@ -1,7 +1,7 @@
-"""Implementasi aksi root UbuClean.
+"""Implementation of the UbuClean root actions.
 
-Setiap fungsi hanya boleh melakukan satu tindakan dari whitelist, memvalidasi
-argumennya sendiri, dan tidak pernah menerima perintah bebas.
+Each function may only perform one action from the whitelist, validate its own
+arguments, and never accept free-form commands.
 """
 
 from __future__ import annotations
@@ -42,7 +42,7 @@ _C_ENV = {"LC_ALL": "C", "LANG": "C"}
 
 @dataclass(slots=True)
 class ActionResult:
-    """Hasil satu aksi helper yang selalu bisa diserialisasi ke JSON."""
+    """Result of a single helper action that can always be serialized to JSON."""
 
     ok: bool = True
     freed_bytes: int = 0
@@ -51,7 +51,7 @@ class ActionResult:
     detail: str = ""
 
     def to_dict(self) -> dict[str, object]:
-        """Representasi JSON-able."""
+        """JSON-able representation."""
         return {
             "ok": self.ok,
             "freed_bytes": self.freed_bytes,
@@ -63,13 +63,13 @@ class ActionResult:
 
 @dataclass
 class HelperContext:
-    """Dependensi helper agar mudah diganti saat tes."""
+    """Helper dependencies so they can easily be swapped in tests."""
 
     runner: Runner = field(default_factory=SubprocessRunner)
     root: Path = Path("/")
 
     def path(self, relative: str | Path) -> Path:
-        """Path absolut di dalam root (untuk tes)."""
+        """Absolute path inside the root (for tests)."""
         return self.root / str(relative).lstrip("/")
 
 
@@ -120,7 +120,7 @@ def _disk_usage_bytes(ctx: HelperContext, argv: list[str]) -> int:
 
 
 def clean_apt(ctx: HelperContext) -> ActionResult:
-    """Jalankan ``apt-get clean`` dan hitung byte yang dibebaskan."""
+    """Run ``apt-get clean`` and count the bytes freed."""
     archives = ctx.path(ARCHIVES)
     before = path_size(archives)
     before_count = _count_files(archives)
@@ -128,27 +128,27 @@ def clean_apt(ctx: HelperContext) -> ActionResult:
     after = path_size(archives)
     after_count = _count_files(archives)
     if code != 0:
-        return ActionResult(ok=False, errors=[stderr.strip() or f"apt-get clean gagal ({code})"])
+        return ActionResult(ok=False, errors=[stderr.strip() or f"apt-get clean failed ({code})"])
     return ActionResult(
         freed_bytes=max(0, before - after),
         removed=max(0, before_count - after_count),
-        detail="Cache apt dibersihkan.",
+        detail="apt cache cleaned.",
     )
 
 
 def autoremove(ctx: HelperContext) -> ActionResult:
-    """Jalankan ``apt-get autoremove``."""
+    """Run ``apt-get autoremove``."""
     code, stdout, stderr = _run(
         ctx, ["apt-get", "-y", "autoremove"], timeout=900, env=_APT_ENV
     )
     if code != 0:
-        return ActionResult(ok=False, errors=[stderr.strip() or f"autoremove gagal ({code})"])
+        return ActionResult(ok=False, errors=[stderr.strip() or f"autoremove failed ({code})"])
     removed = sum(1 for line in stdout.splitlines() if line.startswith("Removing "))
     freed = _apt_freed_bytes(stdout + stderr)
     return ActionResult(
         freed_bytes=freed,
         removed=removed,
-        detail="Paket tak terpakai dihapus via autoremove.",
+        detail="Unused packages removed via autoremove.",
     )
 
 
@@ -197,16 +197,16 @@ def _package_sizes(ctx: HelperContext, packages: list[str]) -> int:
 
 
 def purge_kernels(ctx: HelperContext, packages: list[str]) -> ActionResult:
-    """Hapus paket kernel lama dengan perlindungan kernel berjalan."""
+    """Delete old kernel packages with running-kernel protection."""
     validated = [validate.kernel_package(package) for package in packages]
     if not validated:
-        return ActionResult(ok=False, errors=["Tidak ada paket kernel yang diberikan."])
+        return ActionResult(ok=False, errors=["No kernel packages provided."])
     running = os.uname().release
     for package in validated:
         if running in package:
             return ActionResult(
                 ok=False,
-                errors=[f"Kernel yang sedang berjalan tidak boleh dihapus: {package}"],
+                errors=[f"The running kernel must not be deleted: {package}"],
             )
     installed = _installed_kernel_images(ctx)
     targeted = {validate.kernel_release(package) for package in validated if "linux-image-" in package}
@@ -215,7 +215,7 @@ def purge_kernels(ctx: HelperContext, packages: list[str]) -> ActionResult:
         return ActionResult(
             ok=False,
             errors=[
-                "Penyaringan dibatalkan: minimal kernel berjalan dan satu kernel cadangan harus tersisa."
+                "Filtering aborted: at least the running kernel and one spare kernel must remain."
             ],
         )
     freed = _package_sizes(ctx, validated)
@@ -230,12 +230,12 @@ def purge_kernels(ctx: HelperContext, packages: list[str]) -> ActionResult:
             freed_bytes=0,
             removed=0,
             ok=False,
-            errors=[stderr.strip() or f"purge kernel gagal ({code})"],
+            errors=[stderr.strip() or f"kernel purge failed ({code})"],
         )
     return ActionResult(
         freed_bytes=freed,
         removed=len(validated),
-        detail=f"Kernel lama dihapus; kernel berjalan {running} dipertahankan.",
+        detail=f"Old kernels deleted; running kernel {running} kept.",
     )
 
 
@@ -261,24 +261,24 @@ def _snap_file_size(ctx: HelperContext, name: str, revision: str) -> int:
 
 
 def snap_old_revisions(ctx: HelperContext, specs: list[str]) -> ActionResult:
-    """Hapus revisi snap yang sudah disabled."""
+    """Delete snap revisions that are already disabled."""
     parsed: list[tuple[str, str]] = [validate.snap_spec(spec) for spec in specs]
     if not parsed:
-        return ActionResult(ok=False, errors=["Tidak ada revisi snap yang diberikan."])
+        return ActionResult(ok=False, errors=["No snap revisions provided."])
     disabled = _snap_disabled_specs(ctx)
     if disabled is None:
-        return ActionResult(ok=False, errors=["Tidak bisa membaca daftar snap."])
-    result = ActionResult(detail="Revisi snap lama dihapus.")
+        return ActionResult(ok=False, errors=["Cannot read the snap list."])
+    result = ActionResult(detail="Old snap revisions deleted.")
     for name, revision in parsed:
         spec = f"{name}:{revision}"
         if spec not in disabled:
-            result.errors.append(f"Revisi bukan disabled/tidak ditemukan: {spec}")
+            result.errors.append(f"Revision is not disabled/not found: {spec}")
             result.ok = False
             continue
         size = _snap_file_size(ctx, name, revision)
         code, _, stderr = _run(ctx, ["snap", "remove", name, "--revision", revision], timeout=300)
         if code != 0:
-            result.errors.append(f"{spec}: {stderr.strip() or f'gagal ({code})'}")
+            result.errors.append(f"{spec}: {stderr.strip() or f'failed ({code})'}")
             result.ok = False
             continue
         result.removed += 1
@@ -287,20 +287,20 @@ def snap_old_revisions(ctx: HelperContext, specs: list[str]) -> ActionResult:
 
 
 def flatpak_unused(ctx: HelperContext) -> ActionResult:
-    """Hapus runtime Flatpak yang tidak dipakai."""
+    """Delete Flatpak runtimes that are not used."""
     code, stdout, stderr = _run(
         ctx,
         ["flatpak", "uninstall", "--unused", "--noninteractive", "-y"],
         timeout=900,
     )
     if code != 0:
-        return ActionResult(ok=False, errors=[stderr.strip() or f"flatpak gagal ({code})"])
+        return ActionResult(ok=False, errors=[stderr.strip() or f"flatpak failed ({code})"])
     removed = sum(1 for line in stdout.splitlines() if line.strip().startswith("Uninstalling"))
-    return ActionResult(removed=removed, detail="Runtime Flatpak tak terpakai dibersihkan.")
+    return ActionResult(removed=removed, detail="Unused Flatpak runtimes cleaned.")
 
 
 def journal_vacuum(ctx: HelperContext, span: str) -> ActionResult:
-    """Vakum journald lebih lama dari rentang yang diminta."""
+    """Vacuum journald entries older than the requested span."""
     validated = validate.journal_span(span)
     before = _disk_usage_bytes(ctx, ["journalctl", "--disk-usage"])
     code, stdout, stderr = _run(
@@ -310,16 +310,16 @@ def journal_vacuum(ctx: HelperContext, span: str) -> ActionResult:
     )
     after = _disk_usage_bytes(ctx, ["journalctl", "--disk-usage"])
     if code != 0:
-        return ActionResult(ok=False, errors=[stderr.strip() or f"vacuum gagal ({code})"])
+        return ActionResult(ok=False, errors=[stderr.strip() or f"vacuum failed ({code})"])
     return ActionResult(
         freed_bytes=max(0, before - after),
-        detail=f"Log journald lebih lama dari {validated} dibersihkan.",
+        detail=f"journald logs older than {validated} cleaned.",
     )
 
 
 def clean_crash(ctx: HelperContext, names: list[str]) -> ActionResult:
-    """Hapus file laporan crash di /var/crash."""
-    result = ActionResult(detail="Laporan crash dibersihkan.")
+    """Delete crash report files in /var/crash."""
+    result = ActionResult(detail="Crash reports cleaned.")
     for name in names:
         try:
             path = validate.crash_path(name, ctx.path(CRASH_DIR))
@@ -336,7 +336,7 @@ def clean_crash(ctx: HelperContext, names: list[str]) -> ActionResult:
             result.ok = False
             continue
         if not stat.S_ISREG(stat_result.st_mode):
-            result.errors.append(f"Bukan file biasa: {path}")
+            result.errors.append(f"Not a regular file: {path}")
             result.ok = False
             continue
         size = stat_result.st_size
@@ -376,16 +376,16 @@ def _delete_tmp_entry(path: Path) -> int:
 
 
 def clean_tmp(ctx: HelperContext, days: int) -> ActionResult:
-    """Hapus file /tmp yang lama dan tidak sedang dipakai."""
+    """Delete /tmp files that are old and not currently in use."""
     validated_days = validate.day_count(str(days))
     cutoff = time.time() - validated_days * 86400
     tmp_dir = ctx.path(TMP_DIR)
-    result = ActionResult(detail=f"File /tmp lebih tua dari {validated_days} hari dibersihkan.")
+    result = ActionResult(detail=f"/tmp files older than {validated_days} days cleaned.")
     skipped = 0
     try:
         entries = list(os.scandir(tmp_dir))
     except OSError as exc:
-        return ActionResult(ok=False, errors=[f"Tidak bisa membaca {tmp_dir}: {exc}"])
+        return ActionResult(ok=False, errors=[f"Cannot read {tmp_dir}: {exc}"])
     for entry in entries:
         name = entry.name
         if name in _SKIP_TMP_NAMES or name.startswith(_SKIP_TMP_PREFIXES):
@@ -407,26 +407,26 @@ def clean_tmp(ctx: HelperContext, days: int) -> ActionResult:
             result.removed += 1
             result.freed_bytes += size
     if skipped:
-        result.detail += f" {skipped} item dilewati karena sedang dipakai."
+        result.detail += f" {skipped} items skipped because they are in use."
     return result
 
 
 def drop_caches(ctx: HelperContext, level: int) -> ActionResult:
-    """Sync lalu tulis level ke /proc/sys/vm/drop_caches."""
+    """Sync, then write the level to /proc/sys/vm/drop_caches."""
     validated = validate.cache_level(str(level))
     code, _, stderr = _run(ctx, ["sync"], timeout=120)
     if code != 0:
-        return ActionResult(ok=False, errors=[stderr.strip() or "sync gagal"])
+        return ActionResult(ok=False, errors=[stderr.strip() or "sync failed"])
     try:
         with ctx.path(DROP_CACHES).open("w", encoding="ascii") as handle:
             handle.write(str(validated))
     except OSError as exc:
-        return ActionResult(ok=False, errors=[f"Tidak bisa menulis drop_caches: {exc}"])
-    return ActionResult(detail=f"Cache kernel dibuang (level {validated}).")
+        return ActionResult(ok=False, errors=[f"Cannot write drop_caches: {exc}"])
+    return ActionResult(detail=f"Kernel caches dropped (level {validated}).")
 
 
 def read_meminfo(path: Path | None = None) -> dict[str, int]:
-    """Baca /proc/meminfo menjadi dict nilai kB."""
+    """Read /proc/meminfo into a dict of kB values."""
     target = path or MEMINFO
     values: dict[str, int] = {}
     try:
@@ -454,72 +454,72 @@ def swap_refresh(
     require_ratio: float = 1.15,
     margin_kb: int = 64 * 1024,
 ) -> ActionResult:
-    """Segarkan swap hanya bila RAM tersedia cukup menampung isi swap."""
+    """Refresh swap only when available RAM can hold the swap contents."""
     info = read_meminfo(ctx.path(MEMINFO) if meminfo is None else meminfo)
     if not info:
-        return ActionResult(ok=False, errors=["Tidak bisa membaca /proc/meminfo."])
+        return ActionResult(ok=False, errors=["Cannot read /proc/meminfo."])
     available = info.get("MemAvailable", 0)
     swap_total = info.get("SwapTotal", 0)
     swap_free = info.get("SwapFree", 0)
     swap_used = max(0, swap_total - swap_free)
     if swap_total == 0:
-        return ActionResult(detail="Swap tidak tersedia; tidak ada yang perlu disegarkan.")
+        return ActionResult(detail="Swap is unavailable; nothing needs refreshing.")
     if swap_used == 0:
-        return ActionResult(detail="Swap tidak sedang dipakai; tidak perlu disegarkan.")
+        return ActionResult(detail="Swap is not in use; no refresh needed.")
     required = int(swap_used * require_ratio) + margin_kb
     if available < required:
         return ActionResult(
             ok=False,
             errors=[
-                f"RAM bebas tidak cukup: butuh {required // 1024} MB, tersedia {available // 1024} MB. "
-                "Tutup beberapa aplikasi lalu coba lagi."
+                f"Not enough free RAM: {required // 1024} MB required, {available // 1024} MB available. "
+                "Close some applications and try again."
             ],
         )
     code, _, stderr = _run(ctx, ["swapoff", "-a"], timeout=900)
     if code != 0:
-        return ActionResult(ok=False, errors=[stderr.strip() or "swapoff gagal"])
+        return ActionResult(ok=False, errors=[stderr.strip() or "swapoff failed"])
     code, _, stderr = _run(ctx, ["swapon", "-a"], timeout=900)
     if code != 0:
         _run(ctx, ["swapon", "-a"], timeout=900)
         return ActionResult(
             ok=False,
-            errors=["Swap gagal diaktifkan kembali. Segera periksa status swap sistem."],
+            errors=["Swap failed to be re-enabled. Check the system swap status immediately."],
         )
-    return ActionResult(detail="Swap disegarkan (swapoff -a && swapon -a).")
+    return ActionResult(detail="Swap refreshed (swapoff -a && swapon -a).")
 
 
 def apt_remove(ctx: HelperContext, package: str) -> ActionResult:
-    """Hapus satu paket apt non-inti."""
+    """Remove a single non-core apt package."""
     validated = validate.removable_package(package)
     code, _, _ = _run(ctx, ["dpkg-query", "-W", "-f=${Status}", validated], timeout=30)
     if code != 0:
-        return ActionResult(ok=False, errors=[f"Paket tidak terpasang: {validated}"])
+        return ActionResult(ok=False, errors=[f"Package is not installed: {validated}"])
     code, _, stderr = _run(ctx, ["apt-get", "remove", "-y", "--", validated], timeout=900, env=_APT_ENV)
     if code != 0:
-        return ActionResult(ok=False, errors=[stderr.strip() or f"apt-get remove gagal ({code})"])
-    return ActionResult(removed=1, detail=f"Paket {validated} dihapus.")
+        return ActionResult(ok=False, errors=[stderr.strip() or f"apt-get remove failed ({code})"])
+    return ActionResult(removed=1, detail=f"Package {validated} removed.")
 
 
 def snap_remove(ctx: HelperContext, name: str) -> ActionResult:
-    """Hapus satu snap."""
+    """Remove a single snap."""
     validated = validate.snap_name(name)
     code, _, stderr = _run(ctx, ["snap", "remove", validated], timeout=900)
     if code != 0:
-        return ActionResult(ok=False, errors=[stderr.strip() or f"snap remove gagal ({code})"])
-    return ActionResult(removed=1, detail=f"Snap {validated} dihapus.")
+        return ActionResult(ok=False, errors=[stderr.strip() or f"snap remove failed ({code})"])
+    return ActionResult(removed=1, detail=f"Snap {validated} removed.")
 
 
 def flatpak_uninstall(ctx: HelperContext, ref: str) -> ActionResult:
-    """Hapus satu aplikasi Flatpak."""
+    """Remove a single Flatpak application."""
     validated = validate.flatpak_ref(ref)
     code, _, stderr = _run(ctx, ["flatpak", "uninstall", "-y", validated], timeout=900)
     if code != 0:
-        return ActionResult(ok=False, errors=[stderr.strip() or f"flatpak uninstall gagal ({code})"])
-    return ActionResult(removed=1, detail=f"Flatpak {validated} dihapus.")
+        return ActionResult(ok=False, errors=[stderr.strip() or f"flatpak uninstall failed ({code})"])
+    return ActionResult(removed=1, detail=f"Flatpak {validated} removed.")
 
 
 def docker_prune(ctx: HelperContext, target: str) -> ActionResult:
-    """Prune satu jenis objek Docker (bukan ``system prune -a``)."""
+    """Prune one type of Docker object (not ``system prune -a``)."""
     validated = validate.docker_target(target)
     commands = {
         "image": ["docker", "image", "prune", "-f"],
@@ -529,7 +529,7 @@ def docker_prune(ctx: HelperContext, target: str) -> ActionResult:
     }
     code, stdout, stderr = _run(ctx, commands[validated], timeout=900)
     if code != 0:
-        return ActionResult(ok=False, errors=[stderr.strip() or f"docker prune gagal ({code})"])
+        return ActionResult(ok=False, errors=[stderr.strip() or f"docker prune failed ({code})"])
     freed = 0
     match = re.search(r"Total reclaimed space:\s*(.+)", stdout)
     if match:
@@ -537,5 +537,5 @@ def docker_prune(ctx: HelperContext, target: str) -> ActionResult:
     return ActionResult(
         freed_bytes=freed,
         removed=1,
-        detail=stdout.strip()[-500:] or f"Docker {validated} dipangkas.",
+        detail=stdout.strip()[-500:] or f"Docker {validated} pruned.",
     )

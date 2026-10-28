@@ -1,4 +1,4 @@
-"""Cleaner objek Docker (dangling image, container berhenti, volume, build cache)."""
+"""Docker object cleaner (dangling images, stopped containers, volumes, build cache)."""
 
 from __future__ import annotations
 
@@ -17,24 +17,24 @@ TARGET_BY_TYPE = {
     "Build Cache": "builder",
 }
 LABELS = {
-    "image": "Image dangling",
-    "container": "Container berhenti",
-    "volume": "Volume tak terpakai",
+    "image": "Dangling image",
+    "container": "Stopped containers",
+    "volume": "Unused volumes",
     "builder": "Build cache",
 }
 
 
 class DockerCleaner(BaseCleaner):
-    """Prune per jenis objek, tanpa ``docker system prune -a``."""
+    """Prune per object type, without ``docker system prune -a``."""
 
     category = get_category("dev-docker")
 
     def scan(self, ctx: Context) -> Preview:
-        """Baca ringkasan docker system df dan tawarkan prune per jenis."""
+        """Read the docker system df summary and offer a prune per object type."""
         if ctx.runner.which("docker") is None:
             return self.new_preview(
                 supported=False,
-                notes=["Docker tidak terpasang di sistem ini."],
+                notes=["Docker is not installed on this system."],
             )
         info = ctx.runner.run(
             ["docker", "info", "--format", "{{.ServerVersion}}"], timeout=15
@@ -43,8 +43,8 @@ class DockerCleaner(BaseCleaner):
             return self.new_preview(
                 supported=False,
                 notes=[
-                    "Docker tidak bisa diakses tanpa hak tambahan.",
-                    "Tambahkan pengguna ke grup docker atau jalankan pembersihan lewat autentikasi admin.",
+                    "Docker cannot be accessed without extra privileges.",
+                    "Add the user to the docker group or run the cleanup through admin authentication.",
                 ],
             )
         result = ctx.runner.run(
@@ -53,7 +53,7 @@ class DockerCleaner(BaseCleaner):
         if result.returncode != 0:
             return self.new_preview(
                 supported=False,
-                errors=[result.stderr.strip() or "docker system df gagal."],
+                errors=[result.stderr.strip() or "docker system df failed."],
             )
         items: list[PreviewItem] = []
         for line in result.stdout.splitlines():
@@ -79,33 +79,33 @@ class DockerCleaner(BaseCleaner):
                     id=target,
                     label=LABELS[target],
                     size=reclaimable,
-                    detail=f"{total} total · {active} aktif",
+                    detail=f"{total} total · {active} active",
                 )
             )
         items.sort(key=lambda item: item.size, reverse=True)
         notes = [
-            "Setiap jenis dipangkas terpisah; tidak menggunakan docker system prune -a.",
-            "Image yang masih dipakai container aktif tidak dihapus.",
-            "Dihapus langsung oleh Docker, bukan karantina.",
+            "Each type is pruned separately; docker system prune -a is not used.",
+            "Images still used by active containers are not deleted.",
+            "Deleted directly by Docker, not quarantined.",
         ]
         if not items:
-            notes.append("Tidak ada objek Docker yang bisa dibebaskan.")
+            notes.append("No Docker objects can be freed.")
         commands = [
             ctx.privileged.describe(["docker-prune", item.id]) for item in items
         ]
         return self.new_preview(items=items, notes=notes, commands=commands)
 
     def clean(self, ctx: Context, preview: Preview) -> CleanOutcome:
-        """Prune setiap jenis objek yang ada di preview."""
+        """Prune each object type present in the preview."""
         targets = [item.id for item in preview.items]
         if not targets:
-            return CleanOutcome(category_id=self.category.id, detail="Tidak ada objek Docker.")
+            return CleanOutcome(category_id=self.category.id, detail="No Docker objects.")
         if ctx.dry_run:
             return CleanOutcome(
                 category_id=self.category.id,
                 freed_bytes=preview.total_bytes,
                 removed=len(targets),
-                detail="Pratinjau: docker prune tidak dijalankan.",
+                detail="Preview: docker prune was not run.",
             )
         outcome = CleanOutcome(category_id=self.category.id)
         for target in targets:

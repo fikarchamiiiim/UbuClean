@@ -1,4 +1,4 @@
-"""Cleaner cache apt dan paket tak terpakai."""
+"""Cleaner for the apt cache and unused packages."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ ARCHIVES = Path("/var/cache/apt/archives")
 
 
 def parse_autoremove(output: str) -> tuple[list[str], int]:
-    """Parse output ``apt-get -s autoremove`` menjadi paket dan estimasi byte."""
+    """Parse ``apt-get -s autoremove`` output into packages and an estimated byte count."""
     packages: list[str] = []
     collecting = False
     for line in output.splitlines():
@@ -39,7 +39,7 @@ def parse_autoremove(output: str) -> tuple[list[str], int]:
 
 
 class AptCacheCleaner(BaseCleaner):
-    """Membersihkan /var/cache/apt/archives lewat helper."""
+    """Cleans /var/cache/apt/archives through the helper."""
 
     category = get_category("apt-cache")
 
@@ -47,9 +47,9 @@ class AptCacheCleaner(BaseCleaner):
         self.archives = Path(archives) if archives else ARCHIVES
 
     def scan(self, ctx: Context) -> Preview:
-        """Daftar paket .deb di cache apt."""
+        """List the .deb packages in the apt cache."""
         if not self.archives.is_dir():
-            return self.new_preview(notes=["Direktori cache apt tidak ditemukan."])
+            return self.new_preview(notes=["apt cache directory not found."])
         items: list[PreviewItem] = []
         for directory in (self.archives, self.archives / "partial"):
             if not directory.is_dir():
@@ -71,37 +71,37 @@ class AptCacheCleaner(BaseCleaner):
                             id=entry.path,
                             label=entry.name,
                             size=size,
-                            detail="Dihapus langsung (bukan karantina)",
+                            detail="Deleted directly (no quarantine)",
                             path=Path(entry.path),
                         )
                     )
         items.sort(key=lambda item: item.size, reverse=True)
         notes = [
-            "Cache apt dihapus langsung dengan apt-get clean; tidak masuk karantina.",
-            "Paket yang sudah terpasang tidak terpengaruh.",
+            "The apt cache is deleted directly with apt-get clean; it does not go to quarantine.",
+            "Installed packages are not affected.",
         ]
         commands = [ctx.privileged.describe(["clean-apt"])]
         return self.new_preview(items=items, notes=notes, commands=commands)
 
     def clean(self, ctx: Context, preview: Preview) -> CleanOutcome:
-        """Jalankan apt-get clean melalui helper."""
+        """Run apt-get clean through the helper."""
         if ctx.dry_run:
             return CleanOutcome(
                 category_id=self.category.id,
                 freed_bytes=preview.total_bytes,
                 removed=preview.item_count,
-                detail="Pratinjau: apt-get clean tidak dijalankan.",
+                detail="Preview: apt-get clean was not run.",
             )
         return self.helper_clean(ctx, ["clean-apt"])
 
 
 class AptAutoremoveCleaner(BaseCleaner):
-    """Menghapus dependensi tak terpakai dengan autoremove."""
+    """Removes unused dependencies with autoremove."""
 
     category = get_category("apt-autoremove")
 
     def scan(self, ctx: Context) -> Preview:
-        """Simulasikan autoremove untuk melihat paket yang akan dihapus."""
+        """Simulate autoremove to see which packages would be deleted."""
         result = ctx.runner.run(
             ["apt-get", "-s", "autoremove"], timeout=120, env={"LC_ALL": "C", "LANG": "C"}
         )
@@ -109,19 +109,19 @@ class AptAutoremoveCleaner(BaseCleaner):
         if result.returncode != 0:
             return self.new_preview(
                 supported=False,
-                errors=[result.stderr.strip() or f"apt-get -s autoremove gagal ({result.returncode})"],
+                errors=[result.stderr.strip() or f"apt-get -s autoremove failed ({result.returncode})"],
             )
         packages, freed = parse_autoremove(output)
         items = [
-            PreviewItem(id=package, label=package, size=0, detail="Akan dihapus")
+            PreviewItem(id=package, label=package, size=0, detail="Will be deleted")
             for package in packages
         ]
         notes = [
-            "Dihapus langsung oleh apt, bukan karantina.",
-            "Autoremove hanya menghapus dependensi yang sudah tidak dibutuhkan.",
+            "Deleted directly by apt, not quarantined.",
+            "Autoremove only removes dependencies that are no longer needed.",
         ]
         if packages and not freed:
-            notes.append("apt tidak memberikan perkiraan ukuran; angka bisa tampil 0 B.")
+            notes.append("apt does not provide a size estimate; the figure may show 0 B.")
         commands = [ctx.privileged.describe(["autoremove"])]
         return self.new_preview(
             items=items,
@@ -131,12 +131,12 @@ class AptAutoremoveCleaner(BaseCleaner):
         )
 
     def clean(self, ctx: Context, preview: Preview) -> CleanOutcome:
-        """Jalankan apt-get autoremove melalui helper."""
+        """Run apt-get autoremove through the helper."""
         if ctx.dry_run:
             return CleanOutcome(
                 category_id=self.category.id,
                 freed_bytes=preview.total_bytes,
                 removed=preview.item_count,
-                detail="Pratinjau: autoremove tidak dijalankan.",
+                detail="Preview: autoremove was not run.",
             )
         return self.helper_clean(ctx, ["autoremove"], timeout=900)

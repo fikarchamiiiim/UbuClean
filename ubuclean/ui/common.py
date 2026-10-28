@@ -1,4 +1,4 @@
-"""Utilitas UI bersama: tema, label, kartu, animasi, dan thread pekerja."""
+"""Shared UI utilities: theme, labels, cards, animations, and worker threads."""
 
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ ICON_FALLBACK = "dialog-information-symbolic"
 
 
 def load_stylesheet() -> None:
-    """Muat ``style.css`` untuk display aktif."""
+    """Load ``style.css`` for the active display."""
     provider = Gtk.CssProvider()
     css_path = Path(__file__).with_name("style.css")
     provider.load_from_path(str(css_path))
@@ -36,7 +36,7 @@ def load_stylesheet() -> None:
 
 
 def reduce_motion() -> bool:
-    """True bila pengguna mematikan animasi di GNOME."""
+    """True if the user disabled animations in GNOME."""
     settings = Gtk.Settings.get_default()
     if settings is None:
         return False
@@ -51,12 +51,12 @@ def run_async(
     on_success: Callable[[T], None],
     on_error: Callable[[Exception], None] | None = None,
 ) -> None:
-    """Jalankan fungsi berat di thread pekerja dan kembali ke main loop."""
+    """Run a heavy function on a worker thread and return to the main loop."""
 
     def worker() -> None:
         try:
             result = func()
-        except Exception as exc:  # noqa: BLE001 - UI tidak boleh crash
+        except Exception as exc:  # noqa: BLE001 - the UI must not crash
             if on_error is not None:
                 GLib.idle_add(functools.partial(on_error, exc))
             return
@@ -66,7 +66,7 @@ def run_async(
 
 
 def set_accessible(widget: Gtk.Widget, label: str, description: str | None = None) -> None:
-    """Pasang label/deskripsi untuk pembaca layar."""
+    """Attach a label/description for screen readers."""
     properties = [Gtk.AccessibleProperty.LABEL]
     values: list[Any] = [label]
     if description:
@@ -79,7 +79,7 @@ def set_accessible(widget: Gtk.Widget, label: str, description: str | None = Non
 
 
 def color_rgba(widget: Gtk.Widget, name: str, fallback: tuple[float, float, float, float] = (0.3, 0.5, 0.9, 1.0)) -> Gdk.RGBA:
-    """Ambil named color tema, dengan fallback yang aman."""
+    """Look up a themed named color, with a safe fallback."""
     context = widget.get_style_context()
     try:
         found, color = context.lookup_color(name)
@@ -93,7 +93,7 @@ def color_rgba(widget: Gtk.Widget, name: str, fallback: tuple[float, float, floa
 
 
 def icon(name: str, size: int = 16, *, css: str | None = None) -> Gtk.Image:
-    """Ikon symbolic konsisten."""
+    """Consistent symbolic icon."""
     image = Gtk.Image.new_from_icon_name(name or ICON_FALLBACK)
     image.set_pixel_size(size)
     if css:
@@ -110,7 +110,7 @@ def label(
     selectable: bool = False,
     hexpand: bool = False,
 ) -> Gtk.Label:
-    """Label dengan gaya konsisten."""
+    """Label with consistent styling."""
     widget = Gtk.Label(label=text, xalign=xalign, wrap=wrap, selectable=selectable)
     if wrap:
         widget.set_wrap_mode(2)
@@ -130,7 +130,7 @@ def button(
     suggested: bool = False,
     destructive: bool = False,
 ) -> Gtk.Button:
-    """Tombol dengan ikon+label opsional dan aksesibilitas."""
+    """Button with optional icon+label and accessibility support."""
     widget = Gtk.Button()
     if icon_name and label_text:
         widget.set_child(Adw.ButtonContent(icon_name=icon_name, label=label_text))
@@ -148,18 +148,18 @@ def button(
         widget.set_tooltip_text(tooltip)
     elif label_text:
         widget.set_tooltip_text(label_text)
-    set_accessible(widget, tooltip or label_text or icon_name or "Tombol")
+    set_accessible(widget, tooltip or label_text or icon_name or "Button")
     return widget
 
 
 def icon_button(icon_name: str, tooltip: str, *, css: Iterable[str] = ()) -> Gtk.Button:
-    """Tombol bulat berisi ikon simbolik."""
+    """Round button containing a symbolic icon."""
     widget = button(icon_name=icon_name, tooltip=tooltip, css=("circular", "flat", *css))
     return widget
 
 
 def card(*, spacing: int = 8, css: Iterable[str] = ()) -> Gtk.Box:
-    """Kartu bergaya UbuClean."""
+    """UbuClean-styled card."""
     box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=spacing)
     box.add_css_class("uc-card")
     for name in css:
@@ -168,7 +168,7 @@ def card(*, spacing: int = 8, css: Iterable[str] = ()) -> Gtk.Box:
 
 
 def _find_listbox(widget: Gtk.Widget) -> Gtk.ListBox | None:
-    """Cari Gtk.ListBox internal milik Adw.PreferencesGroup."""
+    """Find the internal Gtk.ListBox owned by an Adw.PreferencesGroup."""
     if isinstance(widget, Gtk.ListBox):
         return widget
     child = widget.get_first_child()
@@ -181,7 +181,7 @@ def _find_listbox(widget: Gtk.Widget) -> Gtk.ListBox | None:
 
 
 def clear_group(group: Adw.PreferencesGroup) -> None:
-    """Hapus semua baris dari Adw.PreferencesGroup dengan benar."""
+    """Remove every row from an Adw.PreferencesGroup properly."""
     listbox = _find_listbox(group)
     if listbox is None:
         return
@@ -190,7 +190,7 @@ def clear_group(group: Adw.PreferencesGroup) -> None:
 
 
 def plain_row(row: Any) -> Any:
-    """Matikan markup pada baris agar teks pengguna (mis. ``&``) tampil apa adanya."""
+    """Disable markup on the row so user text (e.g. ``&``) shows up verbatim."""
     try:
         row.set_use_markup(False)
     except (AttributeError, TypeError):
@@ -199,7 +199,7 @@ def plain_row(row: Any) -> Any:
 
 
 def action_row(title: str, subtitle: str = "") -> Adw.ActionRow:
-    """ActionRow dengan teks biasa (bukan markup)."""
+    """ActionRow with plain text (no markup)."""
     row = Adw.ActionRow()
     plain_row(row)
     row.set_title(title)
@@ -209,7 +209,7 @@ def action_row(title: str, subtitle: str = "") -> Adw.ActionRow:
 
 
 def expander_row(title: str, subtitle: str = "") -> Adw.ExpanderRow:
-    """ExpanderRow dengan teks biasa (bukan markup)."""
+    """ExpanderRow with plain text (no markup)."""
     row = Adw.ExpanderRow()
     plain_row(row)
     row.set_title(title)
@@ -219,7 +219,7 @@ def expander_row(title: str, subtitle: str = "") -> Adw.ExpanderRow:
 
 
 def progress(fraction: float = 0.0, *, css: str | None = None) -> Gtk.ProgressBar:
-    """Progress bar tipis dengan kelas opsional (success/warning/error)."""
+    """Thin progress bar with an optional class (success/warning/error)."""
     widget = Gtk.ProgressBar()
     widget.set_fraction(max(0.0, min(1.0, fraction)))
     widget.add_css_class("uc-progress")
@@ -229,7 +229,7 @@ def progress(fraction: float = 0.0, *, css: str | None = None) -> Gtk.ProgressBa
 
 
 def set_progress(bar: Gtk.ProgressBar, fraction: float, *, severity: str | None = None) -> None:
-    """Perbarui progress dan warna semantiknya."""
+    """Update the progress and its semantic color."""
     bar.set_fraction(max(0.0, min(1.0, fraction)))
     for name in ("success", "warning", "error"):
         bar.remove_css_class(name)
@@ -238,7 +238,7 @@ def set_progress(bar: Gtk.ProgressBar, fraction: float, *, severity: str | None 
 
 
 def severity_for(percent: float) -> str:
-    """Warna status untuk persentase pemakaian."""
+    """Status color for a usage percentage."""
     if percent >= 90:
         return "error"
     if percent >= 75:
@@ -252,7 +252,7 @@ class _ValueHolder(GObject.Object):
 
 
 class AnimatedNumber:
-    """Angka yang menghitung naik dengan Adw.TimedAnimation."""
+    """A number that counts up with Adw.TimedAnimation."""
 
     def __init__(
         self,
@@ -273,11 +273,11 @@ class AnimatedNumber:
 
     @property
     def value(self) -> float:
-        """Nilai saat ini."""
+        """Current value."""
         return self._value
 
     def set_value(self, value: float, *, animate: bool = True) -> None:
-        """Set nilai, animasikan bila diizinkan."""
+        """Set the value, animating it when allowed."""
         value = float(value)
         if not animate or reduce_motion() or abs(value - self._holder.props.value) < 1:
             self._holder.props.value = value
@@ -306,7 +306,7 @@ def metric_row(
     *,
     subtitle: Gtk.Label | None = None,
 ) -> Gtk.Box:
-    """Baris metrik dengan label, nilai, dan progress bar."""
+    """Metric row with a label, a value, and a progress bar."""
     box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
     top = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
     top.append(label(title, css="uc-label", hexpand=True))
@@ -327,9 +327,9 @@ def ask_confirm(
     destructive: bool = False,
     on_confirm: Callable[[], None],
 ) -> None:
-    """Dialog konfirmasi penting dengan Adw.AlertDialog."""
+    """Important confirmation dialog built on Adw.AlertDialog."""
     dialog = Adw.AlertDialog(heading=heading, body=body)
-    dialog.add_response("cancel", "Batal")
+    dialog.add_response("cancel", "Cancel")
     dialog.add_response("confirm", confirm_label)
     dialog.set_default_response("cancel")
     dialog.set_close_response("cancel")
@@ -347,23 +347,23 @@ def ask_confirm(
 
 
 def show_info(parent: Gtk.Widget, *, heading: str, body: str) -> None:
-    """Dialog informasi sederhana."""
+    """Simple information dialog."""
     dialog = Adw.AlertDialog(heading=heading, body=body)
-    dialog.add_response("close", "Tutup")
+    dialog.add_response("close", "Close")
     dialog.set_default_response("close")
     dialog.set_close_response("close")
     dialog.present(parent)
 
 
 def show_shortcuts(parent: Gtk.Widget, entries: Sequence[tuple[str, str]]) -> None:
-    """Dialog bantuan pintasan keyboard (pengganti Adw.ShortcutsDialog 1.5)."""
+    """Keyboard shortcut help dialog (replacement for Adw.ShortcutsDialog 1.5)."""
     dialog = Adw.Dialog()
-    dialog.set_title("Pintasan keyboard")
+    dialog.set_title("Keyboard shortcuts")
     dialog.set_content_width(420)
     dialog.set_content_height(420)
     toolbar = Adw.ToolbarView()
     header = Adw.HeaderBar()
-    header.set_title_widget(Adw.WindowTitle(title="Pintasan keyboard", subtitle="UbuClean"))
+    header.set_title_widget(Adw.WindowTitle(title="Keyboard shortcuts", subtitle="UbuClean"))
     toolbar.add_top_bar(header)
     page = Adw.PreferencesPage()
     group = Adw.PreferencesGroup()
@@ -380,28 +380,28 @@ def show_shortcuts(parent: Gtk.Widget, entries: Sequence[tuple[str, str]]) -> No
 
 
 def format_rate(value: float) -> str:
-    """Format laju byte/detik."""
+    """Format a byte/second rate."""
     return f"{format_bytes(value)}/s"
 
 
 def format_temp(value: float | None) -> str:
-    """Format suhu."""
+    """Format a temperature."""
     if value is None:
         return "—"
     return f"{value:.0f} °C"
 
 
 def format_uptime(seconds: float) -> str:
-    """Format uptime singkat."""
+    """Format a short uptime."""
     seconds = int(max(0, seconds))
     days, remainder = divmod(seconds, 86400)
     hours, remainder = divmod(remainder, 3600)
     minutes = remainder // 60
     if days:
-        return f"{days} hari {hours} jam"
+        return f"{days} days {hours} h"
     if hours:
-        return f"{hours} jam {minutes} menit"
-    return f"{minutes} menit"
+        return f"{hours} h {minutes} min"
+    return f"{minutes} min"
 
 
 __all__ = [

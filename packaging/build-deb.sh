@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Membangun paket .deb UbuClean tanpa hak root.
+# Build the UbuClean .deb package without root privileges.
 set -euo pipefail
 
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -7,7 +7,7 @@ VERSION="$(grep -oP '(?<=^version = ")[^"]+' "$ROOT/pyproject.toml" | head -1)"
 STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
 
-echo "==> Menyiapkan staging $STAGE"
+echo "==> Preparing staging directory $STAGE"
 install -d "$STAGE/DEBIAN" \
   "$STAGE/usr/lib/ubuclean/bin" \
   "$STAGE/usr/bin" \
@@ -46,11 +46,11 @@ Architecture: all
 Depends: python3 (>= 3.12), python3-gi, python3-gi-cairo, python3-psutil, gir1.2-gtk-4.0, gir1.2-adw-1, libnotify-bin, psmisc, policykit-1
 Maintainer: UbuClean <noreply@ubuclean.local>
 Homepage: https://github.com/ubuclean/ubuclean
-Description: Pembersih sistem dan perawatan untuk Ubuntu Desktop
- UbuClean menyediakan pembersih cache dan sampah sistem dengan pratinjau,
- pembersih cache RAM, monitor sistem, analisis disk, pencari duplikat,
- pengelola startup, jadwal pembersihan systemd, karantina yang bisa
- dipulihkan, uninstaller aplikasi, dan notifikasi pintar.
+Description: System cleaner and maintenance for Ubuntu Desktop
+ UbuClean provides a system cache and junk cleaner with previews,
+ a RAM cache cleaner, a system monitor, disk analysis, a duplicate finder,
+ a startup manager, systemd cleanup scheduling, a restorable quarantine,
+ an application uninstaller, and smart notifications.
 EOF
 
 cat > "$STAGE/DEBIAN/postinst" <<'EOF'
@@ -69,4 +69,4 @@ chmod 0755 "$STAGE/DEBIAN/postinst"
 mkdir -p "$ROOT/dist"
 OUT="$ROOT/dist/ubuclean_${VERSION}_all.deb"
 dpkg-deb --root-owner-group --build "$STAGE" "$OUT"
-echo "==> Paket dibuat: $OUT"
+echo "==> Package created: $OUT"

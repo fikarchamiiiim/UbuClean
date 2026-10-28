@@ -1,4 +1,4 @@
-"""Cleaner runtime dan extension Flatpak yang tidak dipakai."""
+"""Cleaner for unused Flatpak runtimes and extensions."""
 
 from __future__ import annotations
 
@@ -24,16 +24,16 @@ def _parse_flatpak_listing(output: str) -> list[tuple[str, int]]:
 
 
 class FlatpakCleaner(BaseCleaner):
-    """Membersihkan runtime Flatpak yang tidak direferensikan aplikasi."""
+    """Cleans Flatpak runtimes that no application references."""
 
     category = get_category("flatpak-unused")
 
     def scan(self, ctx: Context) -> Preview:
-        """Bandingkan runtime terpasang dengan runtime yang dipakai aplikasi."""
+        """Compare installed runtimes with the runtimes used by applications."""
         if ctx.runner.which("flatpak") is None:
             return self.new_preview(
                 supported=False,
-                notes=["Flatpak tidak terpasang di sistem ini."],
+                notes=["Flatpak is not installed on this system."],
             )
         runtimes_result = ctx.runner.run(
             ["flatpak", "list", "--runtime", "--columns=ref,size"],
@@ -42,7 +42,7 @@ class FlatpakCleaner(BaseCleaner):
         if runtimes_result.returncode != 0:
             return self.new_preview(
                 supported=False,
-                errors=[runtimes_result.stderr.strip() or "flatpak list --runtime gagal."],
+                errors=[runtimes_result.stderr.strip() or "flatpak list --runtime failed."],
             )
         used_result = ctx.runner.run(
             ["flatpak", "list", "--app", "--columns=runtime"],
@@ -60,29 +60,29 @@ class FlatpakCleaner(BaseCleaner):
                 id=ref,
                 label=ref,
                 size=size,
-                detail="Tidak dipakai aplikasi terpasang",
+                detail="Not used by any installed application",
             )
             for ref, size in unused
         ]
         items.sort(key=lambda item: item.size, reverse=True)
         notes = [
-            "Dihapus langsung oleh flatpak, bukan karantina.",
-            "Runtime yang masih dipakai aplikasi tidak akan dihapus.",
+            "Deleted directly by flatpak, not quarantined.",
+            "Runtimes still used by applications will not be deleted.",
         ]
         if not items:
-            notes.append("Tidak ada runtime Flatpak tak terpakai.")
+            notes.append("No unused Flatpak runtimes.")
         commands = [ctx.privileged.describe(["flatpak-unused"])] if items else []
         return self.new_preview(items=items, notes=notes, commands=commands)
 
     def clean(self, ctx: Context, preview: Preview) -> CleanOutcome:
-        """Jalankan flatpak uninstall --unused melalui helper."""
+        """Run flatpak uninstall --unused through the helper."""
         if not preview.items:
-            return CleanOutcome(category_id=self.category.id, detail="Tidak ada runtime tak terpakai.")
+            return CleanOutcome(category_id=self.category.id, detail="No unused runtimes.")
         if ctx.dry_run:
             return CleanOutcome(
                 category_id=self.category.id,
                 freed_bytes=preview.total_bytes,
                 removed=len(preview.items),
-                detail="Pratinjau: flatpak uninstall tidak dijalankan.",
+                detail="Preview: flatpak uninstall was not run.",
             )
         return self.helper_clean(ctx, ["flatpak-unused"], timeout=900)

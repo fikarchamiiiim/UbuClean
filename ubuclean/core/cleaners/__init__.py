@@ -1,4 +1,4 @@
-"""Registry cleaner yang tersedia."""
+"""Registry of available cleaners."""
 
 from __future__ import annotations
 
@@ -36,7 +36,7 @@ CLEANER_CLASSES: dict[str, type[BaseCleaner]] = {
 
 
 def create_cleaner(category_id: str) -> BaseCleaner | None:
-    """Buat instance cleaner untuk kategori, ``None`` bila belum tersedia."""
+    """Create a cleaner instance for the category, ``None`` if not available yet."""
     cleaner_class = CLEANER_CLASSES.get(category_id)
     if cleaner_class is None:
         return None
@@ -44,5 +44,5 @@ def create_cleaner(category_id: str) -> BaseCleaner | None:
 
 
 def available_category_ids() -> list[str]:
-    """Kategori yang sudah memiliki cleaner."""
+    """Categories that already have a cleaner."""
     return sorted(CLEANER_CLASSES)

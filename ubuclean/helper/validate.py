@@ -1,4 +1,4 @@
-"""Validasi argumen ketat untuk helper root UbuClean."""
+"""Strict argument validation for the UbuClean root helper."""
 
 from __future__ import annotations
 
@@ -49,114 +49,114 @@ PROTECTED_PREFIXES = (
 
 
 class ValidationError(ValueError):
-    """Argumen helper tidak valid."""
+    """Invalid helper argument."""
 
 
 def package_name(value: str) -> str:
-    """Validasi nama paket apt."""
+    """Validate an apt package name."""
     value = value.strip()
     if not PACKAGE_RE.fullmatch(value):
-        raise ValidationError(f"Nama paket tidak valid: {value!r}")
+        raise ValidationError(f"Invalid package name: {value!r}")
     return value
 
 
 def kernel_package(value: str) -> str:
-    """Validasi nama paket kernel."""
+    """Validate a kernel package name."""
     value = value.strip()
     if not KERNEL_PACKAGE_RE.fullmatch(value):
-        raise ValidationError(f"Paket kernel tidak valid: {value!r}")
+        raise ValidationError(f"Invalid kernel package: {value!r}")
     return value
 
 
 def kernel_release(package: str) -> str:
-    """Ambil bagian versi dari nama paket kernel."""
+    """Extract the version part from a kernel package name."""
     return KERNEL_PREFIX_RE.sub("", package)
 
 
 def journal_span(value: str) -> str:
-    """Validasi rentang waktu journalctl (contoh: ``14d``)."""
+    """Validate a journalctl time span (for example ``14d``)."""
     value = value.strip()
     if not JOURNAL_SPAN_RE.fullmatch(value):
-        raise ValidationError(f"Rentang journal tidak valid: {value!r}")
+        raise ValidationError(f"Invalid journal span: {value!r}")
     return value
 
 
 def day_count(value: str, *, maximum: int = 3650) -> int:
-    """Validasi jumlah hari."""
+    """Validate a day count."""
     try:
         number = int(value)
     except ValueError as exc:
-        raise ValidationError(f"Jumlah hari tidak valid: {value!r}") from exc
+        raise ValidationError(f"Invalid day count: {value!r}") from exc
     if not 1 <= number <= maximum:
-        raise ValidationError(f"Jumlah hari harus 1..{maximum}.")
+        raise ValidationError(f"The day count must be 1..{maximum}.")
     return number
 
 
 def cache_level(value: str) -> int:
-    """Validasi level drop_caches (1, 2, atau 3)."""
+    """Validate the drop_caches level (1, 2, or 3)."""
     try:
         level = int(value)
     except ValueError as exc:
-        raise ValidationError(f"Level cache tidak valid: {value!r}") from exc
+        raise ValidationError(f"Invalid cache level: {value!r}") from exc
     if level not in (1, 2, 3):
-        raise ValidationError("Level cache harus 1, 2, atau 3.")
+        raise ValidationError("The cache level must be 1, 2, or 3.")
     return level
 
 
 def snap_spec(value: str) -> tuple[str, str]:
-    """Validasi ``nama:revisi`` snap dan kembalikan komponennya."""
+    """Validate a snap ``name:revision`` and return its components."""
     value = value.strip()
     if not SNAP_SPEC_RE.fullmatch(value):
-        raise ValidationError(f"Spesifikasi snap tidak valid: {value!r}")
+        raise ValidationError(f"Invalid snap spec: {value!r}")
     name, revision = value.split(":", 1)
     return name, revision
 
 
 def snap_name(value: str) -> str:
-    """Validasi nama snap."""
+    """Validate a snap name."""
     value = value.strip()
     if not SNAP_NAME_RE.fullmatch(value):
-        raise ValidationError(f"Nama snap tidak valid: {value!r}")
+        raise ValidationError(f"Invalid snap name: {value!r}")
     return value
 
 
 def flatpak_ref(value: str) -> str:
-    """Validasi app id/ref flatpak."""
+    """Validate a Flatpak app id/ref."""
     value = value.strip()
     if not FLATPAK_REF_RE.fullmatch(value):
-        raise ValidationError(f"Referensi flatpak tidak valid: {value!r}")
+        raise ValidationError(f"Invalid flatpak ref: {value!r}")
     return value
 
 
 def crash_name(value: str) -> str:
-    """Validasi nama file laporan crash (tanpa slash)."""
+    """Validate a crash report file name (no slashes)."""
     value = value.strip()
     if not CRASH_NAME_RE.fullmatch(value) or value in {".", ".."}:
-        raise ValidationError(f"Nama file crash tidak valid: {value!r}")
+        raise ValidationError(f"Invalid crash file name: {value!r}")
     return value
 
 
 def docker_target(value: str) -> str:
-    """Validasi target prune docker."""
+    """Validate a docker prune target."""
     value = value.strip()
     if value not in DOCKER_TARGETS:
-        raise ValidationError(f"Target docker tidak valid: {value!r}")
+        raise ValidationError(f"Invalid docker target: {value!r}")
     return value
 
 
 def removable_package(value: str) -> str:
-    """Validasi paket untuk uninstall dan tolak paket inti sistem."""
+    """Validate a package for uninstall and reject core system packages."""
     value = package_name(value)
     if value in PROTECTED_PACKAGES or value.startswith(PROTECTED_PREFIXES):
-        raise ValidationError(f"Paket inti sistem tidak boleh dihapus: {value}")
+        raise ValidationError(f"Core system packages must not be removed: {value}")
     return value
 
 
 def crash_path(name: str, root: Path = Path("/var/crash")) -> Path:
-    """Bangun path crash yang sudah divalidasi di dalam ``root``."""
+    """Build a validated crash path inside ``root``."""
     safe_name = crash_name(name)
     root_resolved = root.resolve(strict=False)
     candidate = (root / safe_name).resolve(strict=False)
     if candidate.parent != root_resolved:
-        raise ValidationError(f"Path crash keluar dari {root}: {name!r}")
+        raise ValidationError(f"Crash path escapes {root}: {name!r}")
     return candidate

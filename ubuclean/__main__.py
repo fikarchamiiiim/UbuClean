@@ -1,4 +1,4 @@
-"""Memungkinkan ``python3 -m ubuclean``."""
+"""Allow ``python3 -m ubuclean``."""
 
 from __future__ import annotations
 

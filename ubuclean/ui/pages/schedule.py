@@ -1,4 +1,4 @@
-"""Halaman Jadwal pembersihan otomatis."""
+"""Schedule page for automatic cleanup."""
 
 from __future__ import annotations
 
@@ -26,22 +26,22 @@ from ubuclean.ui.common import (
 from ubuclean.ui.pages.base import BasePage
 
 TIME_RE = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
-FREQUENCY_LABELS = ["Harian", "Mingguan", "Bulanan"]
+FREQUENCY_LABELS = ["Daily", "Weekly", "Monthly"]
 FREQUENCY_VALUES = ["daily", "weekly", "monthly"]
 
 
 class SchedulePage(BasePage):
-    """Membuat dan menghapus systemd user timer dari GUI."""
+    """Create and remove systemd user timers from the GUI."""
 
     def __init__(self, window: Any) -> None:
-        super().__init__("Jadwal", "Pembersihan otomatis via systemd user timer", maximum_width=860)
+        super().__init__("Schedule", "Automatic cleanup via systemd user timer", maximum_width=860)
         self.window = window
         self.services = window.services
         self._busy = False
         self._loading = False
         self._category_switches: dict[str, Adw.SwitchRow] = {}
 
-        refresh = icon_button("view-refresh-symbolic", "Muat ulang status jadwal")
+        refresh = icon_button("view-refresh-symbolic", "Reload schedule status")
         refresh.connect("clicked", lambda *_: self._refresh_status())
         self.add_action(refresh)
 
@@ -49,7 +49,7 @@ class SchedulePage(BasePage):
         status_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
         status_row.append(icon("alarm-symbolic", 22, css="uc-nav-icon"))
         status_text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2, hexpand=True)
-        self._status_label = label("Memeriksa jadwal…", css="uc-section")
+        self._status_label = label("Checking schedule…", css="uc-section")
         self._status_detail = label("", css="uc-subtle", wrap=True)
         status_text.append(self._status_label)
         status_text.append(self._status_detail)
@@ -65,27 +65,27 @@ class SchedulePage(BasePage):
     # ------------------------------------------------------------------
     def _form_group(self) -> Adw.PreferencesGroup:
         group = Adw.PreferencesGroup(
-            title="Frekuensi",
-            description="Timer berjalan sebagai systemd user service, tanpa hak root.",
+            title="Frequency",
+            description="The timer runs as a systemd user service, without root privileges.",
         )
         self._enabled_row = Adw.SwitchRow(
-            title="Aktifkan pembersihan terjadwal",
-            subtitle="Timer akan dibuat dan diaktifkan saat disimpan.",
+            title="Enable scheduled cleaning",
+            subtitle="The timer is created and enabled when saved.",
         )
         group.add(self._enabled_row)
-        self._frequency_row = Adw.ComboRow(title="Frekuensi")
+        self._frequency_row = Adw.ComboRow(title="Frequency")
         self._frequency_row.set_model(Gtk.StringList.new(FREQUENCY_LABELS))
         group.add(self._frequency_row)
-        self._time_row = Adw.EntryRow(title="Jam (HH:MM)")
+        self._time_row = Adw.EntryRow(title="Time (HH:MM)")
         group.add(self._time_row)
         return group
 
     def _category_group(self) -> Adw.PreferencesGroup:
         group = Adw.PreferencesGroup(
-            title="Kategori yang dibersihkan",
+            title="Categories to clean",
             description=(
-                "Kernel lama dan cache browser tidak pernah ikut jadwal otomatis. "
-                "Kategori yang butuh root akan dilewati saat headless."
+                "Old kernels and browser caches are never part of an automatic schedule. "
+                "Categories that need root are skipped in headless mode."
             ),
         )
         for category in CATEGORIES:
@@ -99,9 +99,9 @@ class SchedulePage(BasePage):
     def _actions(self) -> Gtk.Widget:
         box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         box.set_halign(Gtk.Align.END)
-        remove = button("Hapus jadwal", icon_name="edit-delete-symbolic", destructive=True)
+        remove = button("Remove schedule", icon_name="edit-delete-symbolic", destructive=True)
         remove.connect("clicked", lambda *_: self._remove_schedule())
-        save = button("Simpan & aktifkan", icon_name="object-select-symbolic", suggested=True)
+        save = button("Save & enable", icon_name="object-select-symbolic", suggested=True)
         save.connect("clicked", lambda *_: self._save_schedule())
         box.append(remove)
         box.append(save)
@@ -112,11 +112,11 @@ class SchedulePage(BasePage):
         box.add_css_class("uc-info")
         box.append(icon("dialog-information-symbolic", 20, css="uc-nav-icon"))
         text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2, hexpand=True)
-        text.append(label("Mode headless", css="uc-section"))
+        text.append(label("Headless mode", css="uc-section"))
         text.append(
             label(
-                "Timer menjalankan `ubuclean --run-scheduled` tanpa membuka GUI. "
-                "Hasil dicatat ke riwayat dan notifikasi desktop.",
+                "The timer runs `ubuclean --run-scheduled` without opening the GUI. "
+                "Results are recorded in history and desktop notifications.",
                 css="uc-subtle",
                 wrap=True,
             )
@@ -151,11 +151,11 @@ class SchedulePage(BasePage):
             return self.services.scheduler.status()
 
         def done(status: Any) -> None:
-            self._status_label.set_text("Timer aktif" if status.active else "Jadwal belum aktif")
+            self._status_label.set_text("Timer active" if status.active else "Schedule not active yet")
             self._status_detail.set_text(status.message)
 
         def failed(exc: Exception) -> None:
-            self._status_detail.set_text(f"Tidak bisa membaca status: {exc}")
+            self._status_detail.set_text(f"Unable to read status: {exc}")
 
         run_async(work, done, failed)
 
@@ -176,10 +176,10 @@ class SchedulePage(BasePage):
             return
         enabled, frequency, time_text, categories = self._collect()
         if not TIME_RE.fullmatch(time_text):
-            show_info(self, heading="Format jam tidak valid", body="Gunakan format 24 jam HH:MM, contoh 09:30.")
+            show_info(self, heading="Invalid time format", body="Use the 24-hour HH:MM format, for example 09:30.")
             return
         if enabled and not categories:
-            show_info(self, heading="Pilih kategori", body="Aktifkan minimal satu kategori untuk dijadwalkan.")
+            show_info(self, heading="Select a category", body="Enable at least one category to schedule.")
             return
         self.services.config.update(
             {
@@ -207,11 +207,11 @@ class SchedulePage(BasePage):
             if ok:
                 self._refresh_status()
             else:
-                show_info(self, heading="Jadwal gagal dibuat", body=message)
+                show_info(self, heading="Failed to create schedule", body=message)
 
         def failed(exc: Exception) -> None:
             self._busy = False
-            show_info(self, heading="Jadwal gagal dibuat", body=str(exc))
+            show_info(self, heading="Failed to create schedule", body=str(exc))
 
         run_async(work, done, failed)
 
@@ -234,15 +234,15 @@ class SchedulePage(BasePage):
 
             def failed(exc: Exception) -> None:
                 self._busy = False
-                self.window.toast(f"Gagal menghapus jadwal: {exc}")
+                self.window.toast(f"Failed to remove schedule: {exc}")
 
             run_async(work, done, failed)
 
         ask_confirm(
             self,
-            heading="Hapus jadwal pembersihan?",
-            body="Timer systemd milik UbuClean akan dinonaktifkan dan dihapus. Konfigurasi kategori tetap disimpan.",
-            confirm_label="Hapus jadwal",
+            heading="Remove the cleaning schedule?",
+            body="UbuClean's systemd timer will be disabled and removed. The category configuration is kept.",
+            confirm_label="Remove schedule",
             destructive=True,
             on_confirm=do_remove,
         )

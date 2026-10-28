@@ -1,4 +1,4 @@
-"""Cleaner file lama di /tmp (butuh helper root)."""
+"""Cleaner for old files in /tmp (requires the root helper)."""
 
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ SKIP_PREFIXES = ("systemd-private-", "snap-private-tmp", "pulse-")
 
 
 class TmpCleaner(BaseCleaner):
-    """Menghapus file /tmp yang tidak dipakai dan lebih tua dari batas hari."""
+    """Deletes /tmp files that are unused and older than the day limit."""
 
     category = get_category("tmp")
 
@@ -35,14 +35,14 @@ class TmpCleaner(BaseCleaner):
         return int(ctx.config.get("tmp_days", 7))
 
     def _in_use(self, ctx: Context, path: Path) -> bool:
-        """Cek pemakaian file dengan fuser bila tersedia."""
+        """Check file usage with fuser when available."""
         if ctx.runner.which("fuser") is None:
             return False
         result = ctx.runner.run(["fuser", "-s", "--", str(path)], timeout=3)
         return result.returncode == 0
 
     def scan(self, ctx: Context) -> Preview:
-        """Daftar file /tmp yang lebih tua dari batas hari dan tidak dipakai."""
+        """List the /tmp files that are older than the day limit and not in use."""
         days = self._days(ctx)
         cutoff = time.time() - days * 86400
         items: list[PreviewItem] = []
@@ -53,7 +53,7 @@ class TmpCleaner(BaseCleaner):
         except OSError as exc:
             return self.new_preview(
                 supported=False,
-                errors=[f"Tidak bisa membaca {self.tmp_dir}: {exc}"],
+                errors=[f"Cannot read {self.tmp_dir}: {exc}"],
             )
         for entry in entries:
             name = entry.name
@@ -76,29 +76,29 @@ class TmpCleaner(BaseCleaner):
                     id=str(path),
                     label=str(path),
                     size=size,
-                    detail=f"Tidak diubah sejak {days} hari",
+                    detail=f"Unchanged for {days} days",
                     path=path,
                 )
             )
         items.sort(key=lambda item: item.size, reverse=True)
         notes = [
-            f"Hanya file yang tidak diubah lebih dari {days} hari dan tidak sedang dipakai.",
-            "File milik pengguna lain diproses oleh helper dengan pemeriksaan yang sama.",
+            f"Only files unchanged for more than {days} days and not currently in use.",
+            "Files owned by other users are handled by the helper with the same checks.",
         ]
         if skipped_in_use:
-            notes.append(f"{skipped_in_use} item dilewati karena sedang dipakai.")
+            notes.append(f"{skipped_in_use} items skipped because they are in use.")
         if unreadable:
-            notes.append(f"{unreadable} item tidak bisa diperiksa (izin ditolak).")
+            notes.append(f"{unreadable} items could not be inspected (permission denied).")
         commands = [ctx.privileged.describe(["clean-tmp", str(days)])]
         return self.new_preview(items=items, notes=notes, commands=commands)
 
     def clean(self, ctx: Context, preview: Preview) -> CleanOutcome:
-        """Jalankan pembersihan /tmp lewat helper."""
+        """Run the /tmp cleanup through the helper."""
         days = self._days(ctx)
         if ctx.dry_run:
             outcome = CleanOutcome(category_id=self.category.id)
             outcome.freed_bytes = preview.total_bytes
             outcome.removed = preview.item_count
-            outcome.detail = "Pratinjau: perintah helper tidak dijalankan."
+            outcome.detail = "Preview: the helper command was not run."
             return outcome
         return self.helper_clean(ctx, ["clean-tmp", str(days)])

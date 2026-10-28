@@ -1,4 +1,4 @@
-"""Cleaner revisi snap yang sudah disabled."""
+"""Cleaner for snap revisions that are already disabled."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ SNAP_DIR = Path("/var/lib/snapd/snaps")
 
 
 class SnapCleaner(BaseCleaner):
-    """Menghapus revisi snap lama yang sudah tidak aktif."""
+    """Deletes old snap revisions that are no longer active."""
 
     category = get_category("snap-revisions")
 
@@ -22,17 +22,17 @@ class SnapCleaner(BaseCleaner):
         return sum(path_size(path) for path in SNAP_DIR.glob(f"{name}_{revision}.snap"))
 
     def scan(self, ctx: Context) -> Preview:
-        """Daftar revisi snap dengan status disabled."""
+        """List snap revisions with disabled status."""
         if ctx.runner.which("snap") is None:
             return self.new_preview(
                 supported=False,
-                notes=["Snap tidak terpasang di sistem ini."],
+                notes=["Snap is not installed on this system."],
             )
         result = ctx.runner.run(["snap", "list", "--all"], timeout=60)
         if result.returncode != 0:
             return self.new_preview(
                 supported=False,
-                errors=[result.stderr.strip() or f"snap list gagal ({result.returncode})"],
+                errors=[result.stderr.strip() or f"snap list failed ({result.returncode})"],
             )
         items: list[PreviewItem] = []
         for line in result.stdout.splitlines()[1:]:
@@ -46,18 +46,18 @@ class SnapCleaner(BaseCleaner):
             items.append(
                 PreviewItem(
                     id=f"{name}:{revision}",
-                    label=f"{name} (revisi {revision})",
+                    label=f"{name} (revision {revision})",
                     size=self._size(name, revision),
-                    detail=f"Versi {version} · {tracking}",
+                    detail=f"Version {version} · {tracking}",
                 )
             )
         items.sort(key=lambda item: item.size, reverse=True)
         notes = [
-            "Revisi snap lama dihapus langsung dengan snap remove; tidak masuk karantina.",
-            "Hanya revisi yang berstatus disabled yang dihapus.",
+            "Old snap revisions are deleted directly with snap remove; not quarantined.",
+            "Only revisions with disabled status are deleted.",
         ]
         if items and not any(item.size for item in items):
-            notes.append("Ukuran revisi tidak dapat dibaca; angka bisa tampil 0 B.")
+            notes.append("Revision size cannot be read; the figure may show 0 B.")
         commands = (
             [ctx.privileged.describe(["snap-old-revisions", *[item.id for item in items]])]
             if items
@@ -66,15 +66,15 @@ class SnapCleaner(BaseCleaner):
         return self.new_preview(items=items, notes=notes, commands=commands)
 
     def clean(self, ctx: Context, preview: Preview) -> CleanOutcome:
-        """Hapus revisi yang terdaftar di preview."""
+        """Delete the revisions listed in the preview."""
         specs = [item.id for item in preview.items]
         if not specs:
-            return CleanOutcome(category_id=self.category.id, detail="Tidak ada revisi snap lama.")
+            return CleanOutcome(category_id=self.category.id, detail="No old snap revisions.")
         if ctx.dry_run:
             return CleanOutcome(
                 category_id=self.category.id,
                 freed_bytes=preview.total_bytes,
                 removed=len(specs),
-                detail="Pratinjau: snap remove tidak dijalankan.",
+                detail="Preview: snap remove was not run.",
             )
         return self.helper_clean(ctx, ["snap-old-revisions", *specs], timeout=900)

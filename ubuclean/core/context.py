@@ -1,4 +1,4 @@
-"""Konteks bersama yang diinjeksi ke cleaner dan layanan core."""
+"""Shared context injected into the cleaners and core services."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from ubuclean.core.runner import PrivilegedRunner, Runner, SubprocessRunner
 
 @dataclass(frozen=True)
 class Context:
-    """Semua dependensi core dalam satu objek yang mudah diganti saat tes."""
+    """All core dependencies in one object that is easy to replace in tests."""
 
     paths: AppPaths
     config: Config
@@ -34,7 +34,7 @@ class Context:
         dry_run: bool = False,
         helper_path: str | None = None,
     ) -> "Context":
-        """Bangun konteks untuk pengguna saat ini atau path yang diberikan."""
+        """Build the context for the current user or the given paths."""
         paths = paths or AppPaths.default()
         config = config or Config.load(paths.config_file)
         runner = runner or SubprocessRunner()
@@ -58,7 +58,7 @@ class Context:
         )
 
     def with_dry_run(self, dry_run: bool) -> "Context":
-        """Salinan konteks dengan mode dry-run yang konsisten."""
+        """A copy of the context with a consistent dry-run mode."""
         if dry_run == self.dry_run:
             return self
         privileged = PrivilegedRunner(

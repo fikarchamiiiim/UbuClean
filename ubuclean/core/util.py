@@ -1,4 +1,4 @@
-"""Utilitas kecil yang dipakai bersama core dan UI."""
+"""Small utilities shared by the core and the UI."""
 
 from __future__ import annotations
 
@@ -13,19 +13,19 @@ MONTHS_ID = (
     "Feb",
     "Mar",
     "Apr",
-    "Mei",
+    "May",
     "Jun",
     "Jul",
-    "Agu",
+    "Aug",
     "Sep",
-    "Okt",
+    "Oct",
     "Nov",
-    "Des",
+    "Dec",
 )
 
 
 def format_date(timestamp: float, *, with_time: bool = False) -> str:
-    """Format tanggal gaya Indonesia, opsional dengan jam."""
+    """Format a date in English, optionally including the time."""
     moment = time.localtime(timestamp)
     date_text = f"{moment.tm_mday} {MONTHS_ID[moment.tm_mon - 1]} {moment.tm_year}"
     if with_time:
@@ -34,7 +34,7 @@ def format_date(timestamp: float, *, with_time: bool = False) -> str:
 
 
 def parse_human_size(text: str) -> int:
-    """Parse ukuran seperti ``1,5 GB``, ``1.024 kB``, atau ``771.6M`` ke byte."""
+    """Parse a size such as ``1.5 GB``, ``1,024 kB``, or ``771.6M`` into bytes."""
     match = _SIZE_RE.search(text)
     if not match:
         return 0
@@ -50,7 +50,7 @@ def parse_human_size(text: str) -> int:
 
 
 def format_bytes(size: float, *, precision: int = 1) -> str:
-    """Format ukuran byte menjadi string ringkas (contoh: ``2,4 GB``)."""
+    """Format a byte size into a compact string (example: ``2.4 GB``)."""
     size = max(0.0, float(size))
     if size < 1024:
         return f"{int(size)} B"
@@ -62,50 +62,50 @@ def format_bytes(size: float, *, precision: int = 1) -> str:
         if value < 1024.0:
             break
     digits = 0 if value >= 100 else precision
-    text = f"{value:.{digits}f}".replace(".", ",")
+    text = f"{value:.{digits}f}"
     return f"{text} {unit}"
 
 
 def format_percent(value: float, *, precision: int = 0) -> str:
-    """Format persentase dengan koma desimal gaya Indonesia."""
-    text = f"{max(0.0, float(value)):.{precision}f}".replace(".", ",")
+    """Format a percentage using a dot as the decimal separator."""
+    text = f"{max(0.0, float(value)):.{precision}f}"
     return f"{text}%"
 
 
 def format_count(value: int) -> str:
-    """Format bilangan bulat dengan pemisah ribuan gaya Indonesia."""
-    return f"{int(value):,}".replace(",", ".")
+    """Format an integer using a comma as the thousands separator."""
+    return f"{int(value):,}"
 
 
 def clamp(value: float, minimum: float, maximum: float) -> float:
-    """Batasi ``value`` pada rentang ``minimum``..``maximum``."""
+    """Clamp ``value`` to the ``minimum``..``maximum`` range."""
     return max(minimum, min(maximum, value))
 
 
 def safe_ratio(part: float, total: float) -> float:
-    """Kembalikan rasio 0..1 tanpa pembagian nol."""
+    """Return a 0..1 ratio without dividing by zero."""
     if total <= 0:
         return 0.0
     return clamp(part / total, 0.0, 1.0)
 
 
 def human_duration(seconds: float) -> str:
-    """Ubah detik menjadi teks durasi singkat dalam Bahasa Indonesia."""
+    """Turn seconds into a short duration string in English."""
     seconds = max(0, int(seconds))
     if seconds < 60:
-        return f"{seconds} detik"
+        return f"{seconds} seconds"
     minutes = seconds // 60
     if minutes < 60:
-        return f"{minutes} menit"
+        return f"{minutes} minutes"
     hours = minutes // 60
     if hours < 24:
-        return f"{hours} jam"
+        return f"{hours} hours"
     days = hours // 24
-    return f"{days} hari"
+    return f"{days} days"
 
 
 def is_finite_number(value: object) -> bool:
-    """True bila ``value`` adalah angka berhingga (bukan bool)."""
+    """True when ``value`` is a finite number (and not a bool)."""
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         return False
     return math.isfinite(float(value))

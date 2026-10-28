@@ -48,7 +48,7 @@ def test_list_merges_and_override(home: Path, tmp_path: Path) -> None:
     assert entries["app.desktop"].overridden is True
     assert entries["app.desktop"].is_system is True
     assert entries["app.desktop"].name == "Sistem App"
-    assert entries["user.desktop"].source == "pengguna"
+    assert entries["user.desktop"].source == "user"
     assert entries["user.desktop"].command == "user-app --flag"
 
 
@@ -107,13 +107,13 @@ def test_rejects_unsafe_filename(home: Path, tmp_path: Path) -> None:
         name="Evil",
         description="",
         command="evil",
-        source="pengguna",
+        source="user",
         enabled=True,
         filename="../../evil.desktop",
     )
     ok, message = startup.set_enabled(entry, False)
     assert not ok
-    assert "tidak valid" in message.lower()
+    assert "not valid" in message.lower()
 
 
 def test_systemd_listing(home: Path, tmp_path: Path) -> None:

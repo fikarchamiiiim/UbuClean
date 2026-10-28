@@ -1,4 +1,4 @@
-"""Layanan systemd user untuk pemantau notifikasi."""
+"""systemd user service for the notification watcher."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from ubuclean.core.runner import Runner, SubprocessRunner
 from ubuclean.core.scheduler import default_exec_start
 
 SERVICE_TEMPLATE = """[Unit]
-Description=Pemantau notifikasi UbuClean
+Description=UbuClean notification watcher
 
 [Service]
 Type=simple
@@ -33,7 +33,7 @@ class WatcherStatus:
 
 
 class NotifierService:
-    """Memasang dan mengendalikan ``ubuclean-notifier.service``."""
+    """Installs and controls ``ubuclean-notifier.service``."""
 
     def __init__(
         self,
@@ -50,15 +50,15 @@ class NotifierService:
 
     @property
     def path(self) -> Path:
-        """Path unit layanan."""
+        """Path of the service unit."""
         return self.unit_dir / constants.NOTIFIER_SERVICE_NAME
 
     def render(self) -> str:
-        """Isi unit service."""
+        """Contents of the service unit."""
         return SERVICE_TEMPLATE.format(exec_start=self.exec_start)
 
     def install(self) -> tuple[bool, str]:
-        """Tulis unit lalu enable --now."""
+        """Write the unit, then enable --now."""
         try:
             self.unit_dir.mkdir(parents=True, exist_ok=True)
             handle = tempfile.NamedTemporaryFile(
@@ -77,44 +77,44 @@ class NotifierService:
                 if os.path.exists(handle.name):
                     os.unlink(handle.name)
         except OSError as exc:
-            return False, f"Gagal menulis unit: {exc}"
+            return False, f"Failed to write the unit: {exc}"
         self.runner.run(["systemctl", "--user", "daemon-reload"], timeout=30)
         result = self.runner.run(
             ["systemctl", "--user", "enable", "--now", constants.NOTIFIER_SERVICE_NAME],
             timeout=60,
         )
         if result.returncode != 0:
-            return False, result.stderr.strip() or "Gagal mengaktifkan pemantau."
-        return True, "Pemantau notifikasi aktif."
+            return False, result.stderr.strip() or "Failed to enable the watcher."
+        return True, "Notification watcher active."
 
     def uninstall(self) -> tuple[bool, str]:
-        """Nonaktifkan lalu hapus unit milik UbuClean."""
+        """Disable the unit, then remove the one owned by UbuClean."""
         if self.path.exists():
             result = self.runner.run(
                 ["systemctl", "--user", "disable", "--now", constants.NOTIFIER_SERVICE_NAME],
                 timeout=60,
             )
             if result.returncode != 0 and "not loaded" not in (result.stderr or "").lower():
-                return False, result.stderr.strip() or "Gagal menonaktifkan pemantau."
+                return False, result.stderr.strip() or "Failed to disable the watcher."
             try:
                 if "UbuClean" in self.path.read_text(encoding="utf-8", errors="replace"):
                     self.path.unlink()
             except OSError as exc:
-                return False, f"Gagal menghapus unit: {exc}"
+                return False, f"Failed to remove the unit: {exc}"
         self.runner.run(["systemctl", "--user", "daemon-reload"], timeout=30)
-        return True, "Pemantau notifikasi dinonaktifkan."
+        return True, "Notification watcher disabled."
 
     def status(self) -> WatcherStatus:
-        """Status unit pemantau."""
+        """Status of the watcher unit."""
         installed = self.path.exists()
         result = self.runner.run(
             ["systemctl", "--user", "is-active", constants.NOTIFIER_SERVICE_NAME], timeout=20
         )
         active = (result.stdout or "").strip() == "active"
         if active:
-            message = "Pemantau berjalan."
+            message = "Watcher is running."
         elif installed:
-            message = "Unit terpasang tetapi tidak aktif."
+            message = "Unit is installed but not active."
         else:
-            message = "Pemantau belum dipasang."
+            message = "The watcher has not been installed yet."
         return WatcherStatus(installed, active, message)

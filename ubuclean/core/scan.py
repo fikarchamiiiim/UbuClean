@@ -1,4 +1,4 @@
-"""Orkestrasi scan dan pembersihan dengan token preview."""
+"""Scan orchestration and cleaning backed by preview tokens."""
 
 from __future__ import annotations
 
@@ -17,11 +17,11 @@ ProgressCallback = Callable[[str, int, int], None]
 
 
 class PreviewRequired(RuntimeError):
-    """Eksekusi ditolak karena preview tidak pernah dipindai oleh sesi ini."""
+    """Execution rejected because this session never scanned a preview."""
 
 
 class CleanAssistant:
-    """Satu sesi scan + clean; token mencegah penghapusan tanpa preview."""
+    """One scan + clean session; the token prevents deletion without a preview."""
 
     def __init__(
         self,
@@ -38,15 +38,15 @@ class CleanAssistant:
             return Preview(
                 category_id=category_id,
                 supported=False,
-                errors=["Kategori ini belum tersedia pada versi ini."],
+                errors=["This category is not available in this version."],
             )
         try:
             return cleaner.scan(self.ctx)
-        except Exception as exc:  # satu kategori gagal tidak menjatuhkan yang lain
+        except Exception as exc:  # one failing category does not bring down the others
             return Preview(
                 category_id=category_id,
                 supported=False,
-                errors=[f"Pemindaian gagal: {exc}"],
+                errors=[f"Scan failed: {exc}"],
             )
 
     def scan(
@@ -56,7 +56,7 @@ class CleanAssistant:
         progress: ProgressCallback | None = None,
         workers: int = 4,
     ) -> dict[str, Preview]:
-        """Pindai kategori secara paralel dan daftarkan token preview-nya."""
+        """Scan categories in parallel and register their preview tokens."""
         ordered = [cid for cid in dict.fromkeys(category_ids) if cid in CATEGORY_MAP]
         if not ordered:
             return {}
@@ -86,7 +86,7 @@ class CleanAssistant:
         registered = self._tokens.get(preview.category_id)
         if registered is None or registered != preview.token:
             raise PreviewRequired(
-                f"Preview untuk kategori {preview.category_id} tidak valid atau sudah kedaluwarsa."
+                f"Preview for category {preview.category_id} is not valid or has expired."
             )
 
     def clean(
@@ -96,7 +96,7 @@ class CleanAssistant:
         dry_run: bool = False,
         progress: ProgressCallback | None = None,
     ) -> CleanReport:
-        """Jalankan pembersihan hanya untuk preview yang terdaftar."""
+        """Run the cleaning only for the registered previews."""
         items = list(previews.values()) if isinstance(previews, Mapping) else list(previews)
         for preview in items:
             self._validate_preview(preview)
@@ -122,22 +122,22 @@ class CleanAssistant:
             return CleanOutcome(
                 category_id=preview.category_id,
                 failed=1,
-                errors=list(preview.errors) or ["Kategori tidak didukung."],
+                errors=list(preview.errors) or ["Category is not supported."],
             )
         cleaner = self._factory(preview.category_id)
         if cleaner is None:
             return CleanOutcome(
                 category_id=preview.category_id,
                 failed=1,
-                errors=["Cleaner tidak tersedia."],
+                errors=["Cleaner is not available."],
             )
         try:
             return cleaner.clean(context, preview)
-        except Exception as exc:  # jangan sampai UI/CLI crash
+        except Exception as exc:  # the UI/CLI must never crash
             return CleanOutcome(
                 category_id=preview.category_id,
                 failed=1,
-                errors=[f"Pembersihan gagal: {exc}"],
+                errors=[f"Cleaning failed: {exc}"],
             )
 
     @staticmethod
@@ -168,12 +168,12 @@ class CleanAssistant:
             pass
 
     def invalidate(self) -> None:
-        """Batalkan semua token preview (dipakai setelah membersihkan)."""
+        """Invalidate every preview token (used after cleaning)."""
         self._tokens.clear()
 
 
 def category_label(category_id: str) -> str:
-    """Label kategori atau id bila tidak dikenal."""
+    """The category label, or the id when it is unknown."""
     try:
         return get_category(category_id).label
     except KeyError:

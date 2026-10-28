@@ -1,8 +1,8 @@
-"""Pembungkus subprocess dengan argv list dan timeout.
+"""Subprocess wrapper with argv lists and timeouts.
 
-Tidak ada pemakaian ``shell=True`` di seluruh proyek. Semua perintah
-dijalankan sebagai list argumen melalui :class:`SubprocessRunner`, dan dapat
-diganti dengan :class:`FakeRunner` saat pengujian.
+``shell=True`` is never used anywhere in the project. Every command runs as an
+argument list through :class:`SubprocessRunner` and can be replaced with
+:class:`FakeRunner` during testing.
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ from typing import Protocol, Sequence
 
 @dataclass(frozen=True)
 class CommandResult:
-    """Hasil eksekusi satu perintah."""
+    """Result of executing a single command."""
 
     argv: tuple[str, ...]
     returncode: int
@@ -29,12 +29,12 @@ class CommandResult:
 
     @property
     def ok(self) -> bool:
-        """True bila perintah selesai dengan kode 0."""
+        """True when the command finished with exit code 0."""
         return self.returncode == 0 and not self.timed_out
 
 
 class Runner(Protocol):
-    """Antarmuka runner yang bisa diganti pada tes."""
+    """Runner interface that can be swapped out in tests."""
 
     def run(
         self,
@@ -43,14 +43,14 @@ class Runner(Protocol):
         timeout: float = 60.0,
         env: dict[str, str] | None = None,
     ) -> CommandResult:
-        """Jalankan argv dan kembalikan hasilnya."""
+        """Run argv and return the result."""
 
     def which(self, name: str) -> str | None:
-        """Cari executable pada PATH."""
+        """Look up an executable on PATH."""
 
 
 class SubprocessRunner:
-    """Runner nyata berbasis :func:`subprocess.run`."""
+    """The real runner, based on :func:`subprocess.run`."""
 
     def run(
         self,
@@ -59,10 +59,10 @@ class SubprocessRunner:
         timeout: float = 60.0,
         env: dict[str, str] | None = None,
     ) -> CommandResult:
-        """Jalankan ``argv`` tanpa shell dan tangkap stdout/stderr."""
+        """Run ``argv`` without a shell and capture stdout/stderr."""
         args = [str(part) for part in argv]
         if not args:
-            raise ValueError("argv tidak boleh kosong")
+            raise ValueError("argv must not be empty")
         started = time.monotonic()
         run_env = dict(os.environ)
         if env:
@@ -88,7 +88,7 @@ class SubprocessRunner:
             return CommandResult(
                 argv=tuple(args),
                 returncode=127,
-                stderr=f"Perintah tidak ditemukan: {args[0]}",
+                stderr=f"Command not found: {args[0]}",
                 duration=time.monotonic() - started,
             )
         except subprocess.TimeoutExpired as exc:
@@ -98,7 +98,7 @@ class SubprocessRunner:
                 argv=tuple(args),
                 returncode=-1,
                 stdout=stdout,
-                stderr=stderr or f"Timeout setelah {timeout:.0f} detik",
+                stderr=stderr or f"Timed out after {timeout:.0f} seconds",
                 duration=time.monotonic() - started,
                 timed_out=True,
             )
@@ -111,13 +111,13 @@ class SubprocessRunner:
             )
 
     def which(self, name: str) -> str | None:
-        """Cari executable pada PATH sistem."""
+        """Look up an executable on the system PATH."""
         return shutil.which(name)
 
 
 @dataclass
 class FakeRunner:
-    """Runner palsu untuk tes: merekam argv dan mengembalikan respons tetap."""
+    """Fake runner for tests: records argv and returns fixed responses."""
 
     responses: dict[str, CommandResult] = field(default_factory=dict)
     argv_responses: dict[tuple[str, ...], CommandResult] = field(default_factory=dict)
@@ -134,7 +134,7 @@ class FakeRunner:
         timeout: float = 60.0,
         env: dict[str, str] | None = None,
     ) -> CommandResult:
-        """Catat panggilan dan kembalikan respons yang sudah disiapkan."""
+        """Record the call and return the prepared response."""
         args = tuple(str(part) for part in argv)
         self.calls.append(args)
         self.timeouts.append(timeout)
@@ -149,17 +149,17 @@ class FakeRunner:
         )
 
     def which(self, name: str) -> str | None:
-        """Kembalikan path palsu bila sudah didaftarkan."""
+        """Return the fake path when one has been registered."""
         return self.paths.get(name)
 
     @property
     def last_argv(self) -> tuple[str, ...]:
-        """Argumen terakhir yang dijalankan."""
+        """The last arguments that were run."""
         return self.calls[-1] if self.calls else ()
 
 
 class PrivilegedError(RuntimeError):
-    """Kegagalan umum pada pemanggilan helper lewat pkexec."""
+    """A general failure while calling the helper through pkexec."""
 
     def __init__(self, message: str, result: CommandResult | None = None) -> None:
         super().__init__(message)
@@ -167,19 +167,19 @@ class PrivilegedError(RuntimeError):
 
 
 class AuthCancelled(PrivilegedError):
-    """Pengguna menutup dialog autentikasi polkit."""
+    """The user closed the polkit authentication dialog."""
 
 
 class AuthDenied(PrivilegedError):
-    """Polkit menolak permintaan autentikasi."""
+    """Polkit denied the authentication request."""
 
 
 class PrivilegedFailure(PrivilegedError):
-    """Helper berjalan tetapi mengembalikan kode gagal."""
+    """The helper ran but returned a failure code."""
 
 
 def default_helper_path() -> str:
-    """Lokasi helper: env override, sibling dev, lalu lokasi instalasi."""
+    """Helper location: env override, dev sibling, then the installed location."""
     override = os.environ.get("UBUCLEAN_HELPER")
     if override:
         return override
@@ -190,7 +190,7 @@ def default_helper_path() -> str:
 
 
 class PrivilegedRunner:
-    """Pemanggil helper root melalui ``pkexec`` dengan whitelist argumen."""
+    """Root helper caller through ``pkexec`` with an argument whitelist."""
 
     def __init__(
         self,
@@ -204,29 +204,29 @@ class PrivilegedRunner:
         self.dry_run = dry_run
 
     def describe(self, args: Sequence[str]) -> tuple[str, ...]:
-        """Argumen lengkap yang akan dijalankan (untuk preview/dry-run)."""
+        """The full arguments that will be run (for preview/dry-run)."""
         return ("pkexec", self.helper_path, *(str(arg) for arg in args))
 
     def run(self, args: Sequence[str], *, timeout: float = 300.0) -> CommandResult:
-        """Jalankan satu aksi helper, memetakan kode keluar polkit."""
+        """Run one helper action, mapping the polkit exit codes."""
         argv = self.describe(args)
         if self.dry_run:
             return CommandResult(argv=argv, returncode=0, stdout="dry-run")
         result = self.runner.run(argv, timeout=timeout)
         if result.returncode == 126:
-            raise AuthCancelled("Autentikasi dibatalkan.", result)
+            raise AuthCancelled("Authentication cancelled.", result)
         if result.returncode == 127:
-            raise AuthDenied("Otorisasi ditolak oleh polkit.", result)
+            raise AuthDenied("Authorisation denied by polkit.", result)
         if result.timed_out:
-            raise PrivilegedFailure("Perintah sistem melewati batas waktu.", result)
+            raise PrivilegedFailure("The system command timed out.", result)
         if result.returncode != 0:
-            message = result.stderr.strip() or f"Helper gagal (kode {result.returncode})."
+            message = result.stderr.strip() or f"Helper failed (code {result.returncode})."
             raise PrivilegedFailure(message, result)
         return result
 
 
 def prune_environment() -> dict[str, str]:
-    """Environment minimal untuk helper (menghindari PYTHONPATH asing)."""
+    """Minimal environment for the helper (avoids a foreign PYTHONPATH)."""
     return {
         "PATH": "/usr/sbin:/usr/bin:/sbin:/bin",
         "LANG": os.environ.get("LANG", "C.UTF-8"),

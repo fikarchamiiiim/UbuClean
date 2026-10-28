@@ -1,4 +1,4 @@
-"""Log riwayat aksi UbuClean (JSON Lines)."""
+"""UbuClean action history log (JSON Lines)."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from typing import Any
 
 @dataclass(slots=True)
 class HistoryEntry:
-    """Satu baris riwayat yang ditulis setelah aksi selesai."""
+    """One history line written after an action has finished."""
 
     action: str
     category: str
@@ -28,7 +28,7 @@ class HistoryEntry:
     ts: float = field(default_factory=time.time)
 
     def to_dict(self) -> dict[str, Any]:
-        """Representasi JSON-able."""
+        """JSON-able representation."""
         return {
             "ts": self.ts,
             "time": time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(self.ts)),
@@ -46,7 +46,7 @@ class HistoryEntry:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "HistoryEntry":
-        """Bangun entri dari JSON, toleran terhadap field yang hilang."""
+        """Build an entry from JSON, tolerant of missing fields."""
         return cls(
             action=str(data.get("action", "")),
             category=str(data.get("category", "")),
@@ -63,14 +63,14 @@ class HistoryEntry:
 
 
 class HistoryLog:
-    """Penulis dan pembaca log riwayat di ``~/.local/state/ubuclean/log``."""
+    """Writer and reader of the history log at ``~/.local/state/ubuclean/log``."""
 
     def __init__(self, path: Path) -> None:
         self.path = Path(path)
         self._lock = threading.Lock()
 
     def ensure(self) -> None:
-        """Pastikan direktori dan file log ada dengan izin 0600."""
+        """Make sure the log directory and file exist with 0600 permissions."""
         self.path.parent.mkdir(parents=True, exist_ok=True)
         os.chmod(self.path.parent, 0o700)
         if not self.path.exists():
@@ -78,7 +78,7 @@ class HistoryLog:
         os.chmod(self.path, 0o600)
 
     def record(self, entry: HistoryEntry) -> None:
-        """Tambahkan satu entri ke log."""
+        """Append a single entry to the log."""
         self.ensure()
         line = json.dumps(entry.to_dict(), ensure_ascii=False)
         with self._lock:
@@ -86,7 +86,7 @@ class HistoryLog:
                 handle.write(line + "\n")
 
     def record_many(self, entries: list[HistoryEntry]) -> None:
-        """Tambahkan beberapa entri dalam satu penulisan."""
+        """Append several entries in a single write."""
         if not entries:
             return
         self.ensure()
@@ -98,7 +98,7 @@ class HistoryLog:
                 handle.write(lines)
 
     def entries(self, limit: int = 500) -> list[HistoryEntry]:
-        """Baca entri terbaru, mengabaikan baris rusak."""
+        """Read the most recent entries, skipping broken lines."""
         if not self.path.exists():
             return []
         result: list[HistoryEntry] = []
@@ -124,11 +124,11 @@ class HistoryLog:
         return result[:limit]
 
     def clear(self) -> None:
-        """Kosongkan log riwayat."""
+        """Empty the history log."""
         with self._lock:
             if self.path.exists():
                 self.path.write_text("", encoding="utf-8")
 
     def path_for_display(self) -> str:
-        """Path log untuk ditampilkan di UI."""
+        """The log path to show in the UI."""
         return str(self.path)

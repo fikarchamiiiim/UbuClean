@@ -1,4 +1,4 @@
-"""Halaman Monitor real-time dengan grafik, core, dan daftar proses."""
+"""Real-time Monitor page with charts, cores, and a process list."""
 
 from __future__ import annotations
 
@@ -32,10 +32,10 @@ from ubuclean.ui.widgets.chart import Sparkline
 
 
 class MonitorPage(BasePage):
-    """Dashboard metrik live, grafik 60 detik, core, dan proses teratas."""
+    """Live metrics dashboard, 60-second charts, cores, and top processes."""
 
     def __init__(self, window: Any) -> None:
-        super().__init__("Monitor", "Aktivitas sistem real-time")
+        super().__init__("Monitor", "Real-time system activity")
         self.window = window
         self.services = window.services
         self._busy = False
@@ -49,11 +49,11 @@ class MonitorPage(BasePage):
 
         self._pause_button = Gtk.ToggleButton()
         self._pause_button.set_icon_name("media-playback-pause-symbolic")
-        self._pause_button.set_tooltip_text("Jeda pembaruan otomatis")
+        self._pause_button.set_tooltip_text("Pause automatic refresh")
         self._pause_button.connect("toggled", self._on_pause_toggled)
         self.add_action(self._pause_button)
 
-        self._meta = label("Menunggu data…", css="uc-subtle")
+        self._meta = label("Waiting for data…", css="uc-subtle")
         self._cards: dict[str, dict[str, Gtk.Widget | None]] = {}
         self.body.append(self._live_cards())
         self.body.append(self._meta)
@@ -75,8 +75,8 @@ class MonitorPage(BasePage):
             ("ram", "RAM", "drive-harddisk-solidstate-symbolic", True),
             ("swap", "Swap", "drive-harddisk-symbolic", True),
             ("disk", "Disk", "drive-harddisk-symbolic", True),
-            ("temp", "Suhu", "dialog-warning-symbolic", False),
-            ("net", "Jaringan", "network-wired-symbolic", False),
+            ("temp", "Temperature", "dialog-warning-symbolic", False),
+            ("net", "Network", "network-wired-symbolic", False),
         ):
             box = card(spacing=6)
             box.set_size_request(190, -1)
@@ -109,13 +109,13 @@ class MonitorPage(BasePage):
     def _charts_card(self) -> Gtk.Widget:
         box = card(spacing=14)
         header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
-        header.append(label("60 detik terakhir", css="uc-section", hexpand=True))
-        header.append(label("langsung", css="uc-pill"))
+        header.append(label("Last 60 seconds", css="uc-section", hexpand=True))
+        header.append(label("live", css="uc-pill"))
         box.append(header)
-        self._cpu_chart = self._chart_row("CPU", ("accent_color",), "Grafik CPU")
-        self._ram_chart = self._chart_row("RAM", ("accent_color",), "Grafik RAM")
+        self._cpu_chart = self._chart_row("CPU", ("accent_color",), "CPU chart")
+        self._ram_chart = self._chart_row("RAM", ("accent_color",), "RAM chart")
         self._net_chart = self._chart_row(
-            "Jaringan", ("accent_color", "success_color"), "Grafik jaringan"
+            "Network", ("accent_color", "success_color"), "Network chart"
         )
         box.append(self._cpu_chart["row"])
         box.append(self._divider())
@@ -145,10 +145,10 @@ class MonitorPage(BasePage):
 
     def _process_group(self) -> Gtk.Widget:
         self._process_group_widget = Adw.PreferencesGroup(
-            title="Proses teratas",
-            description="Hanya proses milik Anda yang dapat diakhiri; proses sistem dikunci.",
+            title="Top processes",
+            description="Only your own processes can be ended; system processes are locked.",
         )
-        self._sort_row = Adw.ComboRow(title="Urutkan berdasarkan")
+        self._sort_row = Adw.ComboRow(title="Sort by")
         self._sort_row.set_model(Gtk.StringList.new(["CPU", "RAM"]))
         self._sort_row.set_selected(0)
         self._sort_row.connect("notify::selected", self._on_sort_changed)
@@ -178,7 +178,7 @@ class MonitorPage(BasePage):
         toggle.set_icon_name(
             "media-playback-start-symbolic" if self._paused else "media-playback-pause-symbolic"
         )
-        toggle.set_tooltip_text("Lanjutkan pembaruan" if self._paused else "Jeda pembaruan otomatis")
+        toggle.set_tooltip_text("Resume refresh" if self._paused else "Pause automatic refresh")
         if not self._paused:
             self._sample_once()
 
@@ -211,7 +211,7 @@ class MonitorPage(BasePage):
             self._busy = False
             if not self._error_shown:
                 self._error_shown = True
-                self.window.toast(f"Monitor gagal memperbarui: {exc}")
+                self.window.toast(f"Monitor failed to refresh: {exc}")
 
         run_async(collect, done, failed)
 
@@ -230,7 +230,7 @@ class MonitorPage(BasePage):
 
         swap = self._cards["swap"]
         swap["value"].set_text(
-            format_percent(snapshot.swap_percent) if snapshot.swap_total else "Tidak ada"
+            format_percent(snapshot.swap_percent) if snapshot.swap_total else "None"
         )
         swap["subtitle"].set_text(
             f"{format_bytes(snapshot.swap_used)} / {format_bytes(snapshot.swap_total)}"
@@ -250,16 +250,16 @@ class MonitorPage(BasePage):
 
         temp = self._cards["temp"]
         temp["value"].set_text(format_temp(snapshot.temperature))
-        temp["subtitle"].set_text("Sensor perangkat" if snapshot.temperature else "Sensor tidak tersedia")
+        temp["subtitle"].set_text("Device sensor" if snapshot.temperature else "Sensor unavailable")
 
         net = self._cards["net"]
         net["value"].set_text(format_rate(snapshot.net_recv_rate))
-        net["subtitle"].set_text(f"unggah {format_rate(snapshot.net_sent_rate)}")
+        net["subtitle"].set_text(f"upload {format_rate(snapshot.net_sent_rate)}")
 
         self._cpu_chart["value"].set_text(format_percent(snapshot.cpu_percent))
         self._ram_chart["value"].set_text(format_percent(snapshot.ram_percent))
         self._net_chart["value"].set_text(
-            f"unduh {format_rate(snapshot.net_recv_rate)} · unggah {format_rate(snapshot.net_sent_rate)}"
+            f"download {format_rate(snapshot.net_recv_rate)} · upload {format_rate(snapshot.net_sent_rate)}"
         )
 
         history = self.services.monitor.history
@@ -274,7 +274,7 @@ class MonitorPage(BasePage):
 
         self._update_cores(snapshot.cpu_per_core)
         self._meta.set_text(
-            f"Load {snapshot.load_1:.2f} · {snapshot.process_count} proses · "
+            f"Load {snapshot.load_1:.2f} · {snapshot.process_count} processes · "
             f"{snapshot.disk_total and format_bytes(snapshot.disk_total)} disk"
         )
 
@@ -308,10 +308,10 @@ class MonitorPage(BasePage):
                 lock = icon("system-lock-screen-symbolic", 16, css="uc-subtle")
                 lock.set_tooltip_text(process.protected_reason)
                 row.add_suffix(lock)
-                row.set_tooltip_text(f"Dilindungi: {process.protected_reason}")
+                row.set_tooltip_text(f"Protected: {process.protected_reason}")
             else:
                 kill = icon_button(
-                    "edit-delete-symbolic", f"Akhiri {process.name} (PID {process.pid})"
+                    "edit-delete-symbolic", f"End {process.name} (PID {process.pid})"
                 )
                 kill.add_css_class("uc-danger-text")
                 kill.set_valign(Gtk.Align.CENTER)
@@ -324,12 +324,12 @@ class MonitorPage(BasePage):
     def _confirm_kill(self, process: ProcessInfo) -> None:
         ask_confirm(
             self,
-            heading=f"Akhiri {process.name}?",
+            heading=f"End {process.name}?",
             body=(
-                f"Proses PID {process.pid} akan dihentikan. Pekerjaan yang belum disimpan "
-                "pada aplikasi tersebut bisa hilang."
+                f"Process PID {process.pid} will be terminated. Unsaved work "
+                "in that application may be lost."
             ),
-            confirm_label="Akhiri proses",
+            confirm_label="End process",
             destructive=True,
             on_confirm=lambda: self._kill(process),
         )
@@ -345,6 +345,6 @@ class MonitorPage(BasePage):
                 self._sample_once()
 
         def failed(exc: Exception) -> None:
-            self.window.toast(f"Gagal mengakhiri proses: {exc}")
+            self.window.toast(f"Failed to end process: {exc}")
 
         run_async(work, done, failed)

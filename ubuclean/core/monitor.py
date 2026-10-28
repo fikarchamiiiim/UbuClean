@@ -1,4 +1,4 @@
-"""Sampler metrik sistem real-time dan pengelolaan proses."""
+"""Real-time system metric sampler and process management."""
 
 from __future__ import annotations
 
@@ -39,7 +39,7 @@ _cpu_samples: dict[int, tuple[float, float]] = {}
 
 @dataclass(frozen=True, slots=True)
 class Snapshot:
-    """Satu cuplikan metrik sistem."""
+    """One system metrics sample."""
 
     ts: float
     cpu_percent: float = 0.0
@@ -64,7 +64,7 @@ class Snapshot:
     process_count: int = 0
 
     def as_dict(self) -> dict[str, object]:
-        """Representasi JSON-able."""
+        """JSON-able representation."""
         return {
             "ts": self.ts,
             "cpu_percent": round(self.cpu_percent, 1),
@@ -108,7 +108,7 @@ def _temperature() -> float | None:
 
 
 def collect_snapshot(disk_path: str | Path = "/") -> Snapshot:
-    """Baca metrik sistem memakai psutil (dipanggil dari thread pekerja)."""
+    """Read system metrics using psutil (called from a worker thread)."""
     import psutil
 
     memory = psutil.virtual_memory()
@@ -147,7 +147,7 @@ def collect_snapshot(disk_path: str | Path = "/") -> Snapshot:
 
 
 class MonitorSampler:
-    """Menyimpan riwayat singkat snapshot dan menghitung laju jaringan."""
+    """Keeps a short snapshot history and computes network rates."""
 
     def __init__(
         self,
@@ -165,7 +165,7 @@ class MonitorSampler:
         self._lock = threading.Lock()
 
     def sample(self) -> Snapshot:
-        """Ambil snapshot baru, lengkapi laju jaringan, simpan ke riwayat."""
+        """Take a new snapshot, fill in the network rates, and add it to the history."""
         snapshot = self._provider()
         with self._lock:
             last = self._history[-1] if self._history else None
@@ -183,25 +183,25 @@ class MonitorSampler:
 
     @property
     def history(self) -> tuple[Snapshot, ...]:
-        """Salinan riwayat snapshot terlama → terbaru."""
+        """Copy of the snapshot history, oldest → newest."""
         with self._lock:
             return tuple(self._history)
 
     @property
     def latest(self) -> Snapshot | None:
-        """Snapshot terakhir bila ada."""
+        """The most recent snapshot, if any."""
         with self._lock:
             return self._history[-1] if self._history else None
 
     def reset(self) -> None:
-        """Kosongkan riwayat."""
+        """Clear the history."""
         with self._lock:
             self._history.clear()
 
 
 @dataclass(frozen=True, slots=True)
 class ProcessInfo:
-    """Ringkasan satu proses untuk daftar monitor."""
+    """Summary of one process for the monitor list."""
 
     pid: int
     name: str
@@ -214,7 +214,7 @@ class ProcessInfo:
     protected_reason: str | None = None
 
     def as_dict(self) -> dict[str, object]:
-        """Representasi JSON-able."""
+        """JSON-able representation."""
         return {
             "pid": self.pid,
             "name": self.name,
@@ -237,22 +237,22 @@ def critical_reason(
     current_uid: int,
     current_pid: int | None = None,
 ) -> str | None:
-    """Alasan proses tidak boleh diakhiri, atau ``None`` bila aman."""
+    """Reason the process must not be terminated, or ``None`` when it is safe."""
     if pid <= 1:
-        return "Proses init sistem"
+        return "System init process"
     if current_pid is not None and pid == current_pid:
-        return "Proses UbuClean sendiri"
+        return "UbuClean's own process"
     if name in CRITICAL_NAMES:
-        return "Proses inti sesi desktop"
+        return "Core desktop session process"
     if uid == 0 and current_uid != 0:
-        return "Proses sistem milik root"
+        return "Root-owned system process"
     if uid != current_uid:
-        return "Milik pengguna lain"
+        return "Owned by another user"
     return None
 
 
 def _cpu_percent_for(process, now: float) -> float:
-    """Hitung CPU% dari selisih cpu_times agar akurat antar-refresh."""
+    """Compute CPU% from the cpu_times difference so it stays accurate between refreshes."""
     try:
         times = process.cpu_times()
         total = float(times.user + times.system)
@@ -278,7 +278,7 @@ def list_processes(
     current_uid: int | None = None,
     current_pid: int | None = None,
 ) -> list[ProcessInfo]:
-    """Ambil proses teratas berdasarkan CPU atau RAM."""
+    """Fetch the top processes by CPU or RAM."""
     import psutil
 
     uid = os.getuid() if current_uid is None else current_uid
@@ -337,14 +337,14 @@ def sort_processes(
     sort_by: str = "cpu",
     limit: int = constants.TOP_PROCESS_LIMIT,
 ) -> list[ProcessInfo]:
-    """Urutkan proses dan batasi jumlahnya (fungsi murni untuk tes)."""
+    """Sort processes and limit their number (a pure function used by tests)."""
     key = (lambda item: item.memory_percent) if sort_by == "memory" else (lambda item: item.cpu_percent)
     ordered = sorted(processes, key=key, reverse=True)
     return ordered[: max(1, limit)]
 
 
 def terminate_process(pid: int, *, current_uid: int | None = None) -> tuple[bool, str]:
-    """Akhiri satu proses setelah validasi ulang; tidak pernah untuk proses inti."""
+    """Terminate a single process after re-validating it; never for core processes."""
     import psutil
 
     uid = os.getuid() if current_uid is None else current_uid
@@ -354,7 +354,7 @@ def terminate_process(pid: int, *, current_uid: int | None = None) -> tuple[bool
         username = process.username()
         process_uid = process.uids().real
     except (psutil.NoSuchProcess, psutil.AccessDenied, OSError) as exc:
-        return False, f"Proses tidak dapat diakses: {exc}"
+        return False, f"Process cannot be accessed: {exc}"
     reason = critical_reason(
         pid,
         name,
@@ -371,6 +371,6 @@ def terminate_process(pid: int, *, current_uid: int | None = None) -> tuple[bool
             process.wait(timeout=3)
         except psutil.TimeoutExpired:
             process.kill()
-        return True, f"Proses {name} ({pid}) diakhiri."
+        return True, f"Process {name} ({pid}) terminated."
     except (psutil.NoSuchProcess, psutil.AccessDenied, OSError) as exc:
-        return False, f"Gagal mengakhiri proses: {exc}"
+        return False, f"Failed to terminate the process: {exc}"

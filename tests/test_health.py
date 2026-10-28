@@ -9,7 +9,7 @@ from ubuclean.core.models import Preview
 def test_healthy_system_scores_high() -> None:
     report = compute_health(disk_percent=30, ram_percent=20, swap_percent=0)
     assert report.score >= 98
-    assert report.verdict == "Sangat baik"
+    assert report.verdict == "Excellent"
     assert report.severity == "success"
     assert report.recommendations == []
 
@@ -33,7 +33,7 @@ def test_score_bounded() -> None:
         old_kernels=10,
     )
     assert report.score == 0
-    assert report.verdict == "Perlu perhatian"
+    assert report.verdict == "Needs attention"
     assert report.severity == "error"
     assert len(report.recommendations) >= 3
 
@@ -55,7 +55,7 @@ def test_deductions_sorted() -> None:
 
 def test_old_kernels_recommendation() -> None:
     report = compute_health(disk_percent=40, ram_percent=30, swap_percent=0, old_kernels=3)
-    assert any("Kernel" in item.title for item in report.recommendations)
+    assert any("Old kernels" in item.title for item in report.recommendations)
     assert report.as_dict()["score"] == report.score
 
 
@@ -68,4 +68,4 @@ def test_scan_health_aggregates_cache() -> None:
     }
     report = scan_health(previews, disk_percent=50, ram_percent=50, swap_percent=0)
     cache = next(factor for factor in report.factors if factor.key == "cache")
-    assert cache.detail.startswith("1,0 GB")
+    assert cache.detail.startswith("1.0 GB")

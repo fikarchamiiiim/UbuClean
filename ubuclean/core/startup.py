@@ -1,4 +1,4 @@
-"""Pengelola aplikasi autostart dan systemd user service."""
+"""Manager for autostart applications and systemd user services."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ _SAFE_FILENAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._ +-]{0,180}\.desktop$")
 
 @dataclass(frozen=True, slots=True)
 class StartupEntry:
-    """Satu entri autostart atau user service."""
+    """A single autostart entry or user service."""
 
     key: str
     name: str
@@ -34,7 +34,7 @@ class StartupEntry:
 
     @property
     def is_systemd(self) -> bool:
-        """True bila entri berasal dari systemd user service."""
+        """True when the entry comes from a systemd user service."""
         return self.unit is not None
 
 
@@ -84,7 +84,7 @@ def _entry_from_values(
 
 
 def _write_desktop(path: Path, updates: dict[str, str]) -> None:
-    """Tulis file .desktop secara atomik sambil mempertahankan key lain."""
+    """Write the .desktop file atomically while keeping the other keys."""
     parser = configparser.ConfigParser(interpolation=None, strict=False)
     parser.optionxform = str
     if path.exists():
@@ -117,7 +117,7 @@ def _write_desktop(path: Path, updates: dict[str, str]) -> None:
 
 
 class StartupService:
-    """Membaca dan mengubah autostart tanpa menghapus file asli."""
+    """Reads and modifies autostart entries without deleting the original file."""
 
     def __init__(
         self,
@@ -133,14 +133,14 @@ class StartupService:
 
     # -- autostart -----------------------------------------------------
     def list_desktop_entries(self) -> list[StartupEntry]:
-        """Gabungkan entri sistem dan pengguna; override pengguna menang."""
+        """Merge system and user entries; the user override wins."""
         merged: dict[str, StartupEntry] = {}
         for path in self._glob(self.system_dir):
             values = _read_desktop(path)
             if values is None:
                 continue
             merged[path.name] = _entry_from_values(
-                path.name, values, source="sistem", path=path, is_system=True
+                path.name, values, source="system", path=path, is_system=True
             )
         for path in self._glob(self.user_dir):
             values = _read_desktop(path)
@@ -156,7 +156,7 @@ class StartupService:
                 )
             else:
                 merged[path.name] = _entry_from_values(
-                    path.name, values, source="pengguna", path=path, is_system=False
+                    path.name, values, source="user", path=path, is_system=False
                 )
         return sorted(merged.values(), key=lambda entry: entry.name.lower())
 
@@ -168,11 +168,11 @@ class StartupService:
             return []
 
     def set_desktop_enabled(self, entry: StartupEntry, enabled: bool) -> tuple[bool, str]:
-        """Aktifkan/nonaktifkan entri tanpa menghapus file asli."""
+        """Enable/disable the entry without deleting the original file."""
         if entry.is_systemd or not entry.filename:
-            return False, "Entri bukan autostart desktop."
+            return False, "The entry is not a desktop autostart."
         if not _SAFE_FILENAME.fullmatch(entry.filename):
-            return False, "Nama file autostart tidak valid."
+            return False, "The autostart file name is not valid."
         if entry.is_system:
             override = self.user_dir / entry.filename
             values = {
@@ -191,10 +191,10 @@ class StartupService:
             try:
                 _write_desktop(override, values)
             except OSError as exc:
-                return False, f"Gagal menulis override: {exc}"
-            return True, "Override pengguna diperbarui."
+                return False, f"Failed to write the override: {exc}"
+            return True, "User override updated."
         if entry.path is None:
-            return False, "File autostart tidak ditemukan."
+            return False, "Autostart file not found."
         try:
             _write_desktop(
                 entry.path,
@@ -204,12 +204,12 @@ class StartupService:
                 },
             )
         except OSError as exc:
-            return False, f"Gagal menulis file autostart: {exc}"
-        return True, "Entri autostart diperbarui."
+            return False, f"Failed to write the autostart file: {exc}"
+        return True, "Autostart entry updated."
 
     # -- systemd -------------------------------------------------------
     def list_systemd_services(self) -> list[StartupEntry]:
-        """Daftar user service systemd yang enabled."""
+        """List the systemd user services that are enabled."""
         result = self.runner.run(
             [
                 "systemctl",
@@ -260,24 +260,24 @@ class StartupService:
         return result.stdout.strip() if result.returncode == 0 else ""
 
     def set_systemd_enabled(self, entry: StartupEntry, enabled: bool) -> tuple[bool, str]:
-        """Enable/disable user service systemd."""
+        """Enable/disable a systemd user service."""
         if not entry.unit:
-            return False, "Unit systemd tidak valid."
+            return False, "Invalid systemd unit."
         action = "enable" if enabled else "disable"
         result = self.runner.run(
             ["systemctl", "--user", action, "--now", entry.unit], timeout=60
         )
         if result.returncode != 0:
-            message = result.stderr.strip() or f"systemctl {action} gagal."
+            message = result.stderr.strip() or f"systemctl {action} failed."
             return False, message
-        return True, f"{entry.unit} {'diaktifkan' if enabled else 'dinonaktifkan'}."
+        return True, f"{entry.unit} {'enabled' if enabled else 'disabled'}."
 
     def list_entries(self) -> list[StartupEntry]:
-        """Gabungan autostart dan user service."""
+        """Combined autostart entries and user services."""
         return self.list_desktop_entries() + self.list_systemd_services()
 
     def set_enabled(self, entry: StartupEntry, enabled: bool) -> tuple[bool, str]:
-        """Aktifkan/nonaktifkan entri apa pun."""
+        """Enable/disable any entry."""
         if entry.is_systemd:
             return self.set_systemd_enabled(entry, enabled)
         return self.set_desktop_enabled(entry, enabled)

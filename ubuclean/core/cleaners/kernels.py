@@ -1,4 +1,4 @@
-"""Cleaner kernel lama dengan perlindungan kernel berjalan dan cadangan."""
+"""Old kernel cleaner with running-kernel and spare-kernel protection."""
 
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ KERNEL_PATTERNS = (
 
 @dataclass(frozen=True, slots=True)
 class KernelPackage:
-    """Satu paket kernel yang terpasang."""
+    """A single installed kernel package."""
 
     name: str
     release: str
@@ -32,7 +32,7 @@ class KernelPackage:
 
 
 def version_sort_key(release: str) -> tuple[tuple[int, object], ...]:
-    """Kunci pengurutan versi kernel (angka dibanding angka)."""
+    """Kernel version sort key (numbers compared as numbers)."""
     parts = re.split(r"[.\-]", release)
     key: list[tuple[int, object]] = []
     for part in parts:
@@ -71,7 +71,7 @@ def _parse_dpkg(output: str) -> list[KernelPackage]:
 
 
 class KernelCleaner(BaseCleaner):
-    """Memilih kernel lama yang aman dihapus."""
+    """Selects old kernels that are safe to delete."""
 
     category = get_category("kernels")
 
@@ -83,13 +83,13 @@ class KernelCleaner(BaseCleaner):
         return _parse_dpkg(result.stdout or "")
 
     def scan(self, ctx: Context) -> Preview:
-        """Pilih kandidat kernel: sisakan kernel berjalan dan satu cadangan."""
+        """Pick kernel candidates: keep the running kernel and one spare."""
         packages = self._query(ctx)
         if not packages:
             return self.new_preview(
                 notes=[
-                    "Tidak ada paket kernel yang dikelola dpkg di sistem ini.",
-                    "Kernel yang sedang berjalan tidak pernah dihapus.",
+                    "No dpkg-managed kernel packages on this system.",
+                    "The running kernel is never deleted.",
                 ]
             )
         running = platform.release()
@@ -99,7 +99,7 @@ class KernelCleaner(BaseCleaner):
             reverse=True,
         )
         if not images:
-            return self.new_preview(notes=["Tidak ada paket linux-image yang terpasang."])
+            return self.new_preview(notes=["No linux-image packages are installed."])
         keep: set[str] = set()
         if running in images:
             keep.add(running)
@@ -121,7 +121,7 @@ class KernelCleaner(BaseCleaner):
                             id=package.name,
                             label=package.name,
                             size=package.size,
-                            detail="Dilindungi (kernel berjalan/cadangan)",
+                            detail="Protected (running/spare kernel)",
                             protected=True,
                         )
                     )
@@ -131,20 +131,20 @@ class KernelCleaner(BaseCleaner):
                             id=package.name,
                             label=package.name,
                             size=package.size,
-                            detail="Akan dihapus",
+                            detail="Will be deleted",
                         )
                     )
                     candidate_packages.append(package.name)
         notes = [
-            f"Kernel berjalan: {running} (tidak pernah dihapus).",
-            f"{len(keep)} kernel dipertahankan sebagai kernel berjalan/cadangan.",
-            "Dihapus langsung dengan apt, bukan karantina.",
+            f"Running kernel: {running} (never deleted).",
+            f"{len(keep)} kernels kept as running/spare kernels.",
+            "Deleted directly with apt, not quarantined.",
         ]
         if not candidates:
-            notes.append("Tidak ada kernel lama yang aman dihapus saat ini.")
+            notes.append("No old kernels are safe to delete right now.")
         if running not in images:
             notes.append(
-                "Kernel berjalan tidak terdeteksi sebagai paket dpkg; pembersihan dibatasi untuk keamanan."
+                "The running kernel was not detected as a dpkg package; cleaning is limited for safety."
             )
         commands = (
             [ctx.privileged.describe(["purge-kernels", *candidate_packages])]
@@ -154,20 +154,20 @@ class KernelCleaner(BaseCleaner):
         return self.new_preview(items=items, notes=notes, commands=commands)
 
     def clean(self, ctx: Context, preview: Preview) -> CleanOutcome:
-        """Hapus paket kernel kandidat lewat helper."""
+        """Delete the candidate kernel packages through the helper."""
         packages = [
             item.id for item in preview.items if not item.protected and item.id
         ]
         if not packages:
             return CleanOutcome(
                 category_id=self.category.id,
-                detail="Tidak ada kernel lama yang aman dihapus.",
+                detail="No old kernels are safe to delete.",
             )
         if ctx.dry_run:
             return CleanOutcome(
                 category_id=self.category.id,
                 freed_bytes=sum(item.size for item in preview.items if not item.protected),
                 removed=len(packages),
-                detail="Pratinjau: purge kernel tidak dijalankan.",
+                detail="Preview: kernel purge was not run.",
             )
         return self.helper_clean(ctx, ["purge-kernels", *packages], timeout=900)

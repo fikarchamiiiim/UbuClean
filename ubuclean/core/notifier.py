@@ -1,4 +1,4 @@
-"""Notifikasi pintar berbasis ambang disk dan RAM."""
+"""Smart notifications based on disk and RAM thresholds."""
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ DISK_PATH = "/"
 
 @dataclass(frozen=True, slots=True)
 class NotificationDecision:
-    """Satu notifikasi yang layak dikirim."""
+    """A single notification that is worth sending."""
 
     kind: str
     title: str
@@ -30,12 +30,12 @@ class NotificationDecision:
 
     @property
     def actions(self) -> tuple[str, str]:
-        """ID dan label aksi utama."""
-        return ("clean", "Bersihkan sekarang") if self.kind == "disk" else ("monitor", "Buka monitor")
+        """ID and label of the main action."""
+        return ("clean", "Clean now") if self.kind == "disk" else ("monitor", "Open monitor")
 
 
 class Notifier:
-    """Memantau disk/RAM dan mengirim notifikasi dengan cooldown."""
+    """Watches disk/RAM and sends notifications with a cooldown."""
 
     def __init__(
         self,
@@ -93,7 +93,7 @@ class Notifier:
 
     # -- evaluation ----------------------------------------------------
     def evaluate(self, disk_percent: float, ram_percent: float) -> NotificationDecision | None:
-        """Tentukan apakah notifikasi perlu dikirim sekarang."""
+        """Decide whether a notification needs to be sent right now."""
         settings = self.ctx.config.notifications
         now = self.clock()
         cooldown = int(settings.get("cooldown_hours", 6)) * 3600
@@ -110,8 +110,8 @@ class Notifier:
             self._save_state()
             return NotificationDecision(
                 kind="disk",
-                title=f"Disk {format_percent(disk_percent)} penuh",
-                body="Buka UbuClean untuk memindai cache dan sampah yang bisa dibebaskan.",
+                title=f"Disk {format_percent(disk_percent)} full",
+                body="Open UbuClean to scan for cache and junk that can be freed.",
             )
 
         threshold = float(settings.get("ram_threshold", 90))
@@ -126,10 +126,10 @@ class Notifier:
                 self._save_state()
                 return NotificationDecision(
                     kind="ram",
-                    title=f"RAM {format_percent(ram_percent)} terpakai",
+                    title=f"RAM {format_percent(ram_percent)} in use",
                     body=(
-                        "Penggunaan RAM tinggi selama beberapa menit. "
-                        "Periksa proses di Monitor atau buang cache yang terbentuk lagi."
+                        "RAM usage has been high for several minutes. "
+                        "Check the processes in the Monitor or drop the cache that has built up again."
                     ),
                 )
         else:
@@ -137,7 +137,7 @@ class Notifier:
         return None
 
     def check(self) -> NotificationDecision | None:
-        """Baca metrik sistem lalu evaluasi ambang."""
+        """Read the system metrics and then evaluate the thresholds."""
         try:
             import psutil
 
@@ -149,7 +149,7 @@ class Notifier:
 
     # -- delivery ------------------------------------------------------
     def notify(self, decision: NotificationDecision) -> bool:
-        """Kirim notifikasi desktop dengan dua tombol aksi."""
+        """Send the desktop notification with two action buttons."""
         if self.ctx.runner.which("notify-send") is None:
             return False
         action_id, action_label = decision.actions
@@ -160,7 +160,7 @@ class Notifier:
                 "--icon=com.ubuclean.App",
                 "--expire-time=60000",
                 f"--action={action_id}={action_label}",
-                "--action=open=Buka UbuClean",
+                "--action=open=Open UbuClean",
                 decision.title,
                 decision.body,
             ],
@@ -193,7 +193,7 @@ class Notifier:
             pass
 
     def watch(self, stop: threading.Event | None = None, *, interval: float = 60.0) -> None:
-        """Loop pemantauan; berhenti saat ``stop`` di-set."""
+        """Watch loop; stops once ``stop`` is set."""
         stop = stop or threading.Event()
         while not stop.is_set():
             decision = self.check()

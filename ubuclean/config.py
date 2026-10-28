@@ -1,4 +1,4 @@
-"""Konfigurasi pengguna UbuClean (``~/.config/ubuclean/config.json``)."""
+"""UbuClean user configuration (``~/.config/ubuclean/config.json``)."""
 
 from __future__ import annotations
 
@@ -43,7 +43,7 @@ _FREQUENCIES = ("daily", "weekly", "monthly")
 
 
 def _deep_merge(base: dict[str, Any], patch: Mapping[str, Any]) -> dict[str, Any]:
-    """Gabungkan ``patch`` ke ``base`` secara rekursif tanpa mengubah input."""
+    """Recursively merge ``patch`` into ``base`` without modifying the input."""
     result = copy.deepcopy(base)
     for key, value in patch.items():
         if isinstance(value, Mapping) and isinstance(result.get(key), dict):
@@ -54,7 +54,7 @@ def _deep_merge(base: dict[str, Any], patch: Mapping[str, Any]) -> dict[str, Any
 
 
 def _as_int(value: object, default: int, minimum: int, maximum: int) -> int:
-    """Konversi ke int dan clamp ke rentang yang diizinkan."""
+    """Convert to int and clamp to the allowed range."""
     try:
         number = int(value)  # type: ignore[arg-type]
     except (TypeError, ValueError):
@@ -63,7 +63,7 @@ def _as_int(value: object, default: int, minimum: int, maximum: int) -> int:
 
 
 def _as_bool(value: object, default: bool) -> bool:
-    """Konversi longgar ke bool."""
+    """Loose conversion to bool."""
     if isinstance(value, bool):
         return value
     if isinstance(value, str):
@@ -74,7 +74,7 @@ def _as_bool(value: object, default: bool) -> bool:
 
 
 def sanitize_config(raw: Mapping[str, Any] | None) -> dict[str, Any]:
-    """Validasi dan lengkapi konfigurasi mentah menjadi bentuk yang aman."""
+    """Validate and complete the raw configuration into a safe shape."""
     merged = _deep_merge(DEFAULT_CONFIG, raw or {})
     config: dict[str, Any] = {
         "version": 1,
@@ -151,7 +151,7 @@ def sanitize_config(raw: Mapping[str, Any] | None) -> dict[str, Any]:
 
 
 class Config:
-    """Konfigurasi yang selalu tervalidasi saat dibaca dan disimpan."""
+    """Configuration that is always validated on read and save."""
 
     def __init__(self, data: Mapping[str, Any] | None = None, path: Path | None = None) -> None:
         self.path = Path(path) if path else None
@@ -159,7 +159,7 @@ class Config:
 
     @classmethod
     def load(cls, path: Path) -> "Config":
-        """Baca konfigurasi; file hilang atau rusak menghasilkan default."""
+        """Read the configuration; a missing or corrupt file yields defaults."""
         path = Path(path)
         try:
             raw = json.loads(path.read_text(encoding="utf-8"))
@@ -171,32 +171,32 @@ class Config:
 
     @property
     def data(self) -> dict[str, Any]:
-        """Salinan konfigurasi agar pemanggil tidak mengubah state internal."""
+        """Copy of the configuration so callers cannot mutate internal state."""
         return copy.deepcopy(self._data)
 
     @property
     def schedule(self) -> dict[str, Any]:
-        """Bagian konfigurasi jadwal."""
+        """The schedule configuration section."""
         return copy.deepcopy(self._data["schedule"])
 
     @property
     def notifications(self) -> dict[str, Any]:
-        """Bagian konfigurasi notifikasi."""
+        """The notifications configuration section."""
         return copy.deepcopy(self._data["notifications"])
 
     def get(self, key: str, default: Any = None) -> Any:
-        """Ambil nilai tingkat atas."""
+        """Read a top-level value."""
         return self._data.get(key, default)
 
     def update(self, patch: Mapping[str, Any]) -> dict[str, Any]:
-        """Gabungkan perubahan, validasi ulang, dan kembalikan data baru."""
+        """Merge changes, re-validate, and return the new data."""
         self._data = sanitize_config(_deep_merge(self._data, patch))
         return self.data
 
     def save(self) -> None:
-        """Tulis konfigurasi secara atomik dengan izin 0600."""
+        """Write the configuration atomically with 0600 permissions."""
         if self.path is None:
-            raise ValueError("Config tidak memiliki path tujuan.")
+            raise ValueError("Config has no destination path.")
         self.path.parent.mkdir(parents=True, exist_ok=True)
         os.chmod(self.path.parent, 0o700)
         payload = json.dumps(self._data, ensure_ascii=False, indent=2) + "\n"

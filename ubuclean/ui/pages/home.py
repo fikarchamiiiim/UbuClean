@@ -1,4 +1,4 @@
-"""Halaman Beranda dengan Skor Kesehatan dan Smart Clean."""
+"""Home page with Health Score and Smart Clean."""
 
 from __future__ import annotations
 
@@ -32,10 +32,10 @@ from ubuclean.ui.pages.base import BasePage
 
 
 class HomePage(BasePage):
-    """Ringkasan kesehatan, kartu metrik, rekomendasi, dan pindai cepat."""
+    """Health summary, metric cards, recommendations, and quick scan."""
 
     def __init__(self, window: Any) -> None:
-        super().__init__("Beranda", "Ringkasan kesehatan sistem")
+        super().__init__("Home", "System health overview")
         self.window = window
         self.services = window.services
         self._busy = False
@@ -45,7 +45,7 @@ class HomePage(BasePage):
         self._startup_count = 0
 
         self._scan_content = Adw.ButtonContent(
-            icon_name="system-search-symbolic", label="Pindai"
+            icon_name="system-search-symbolic", label="Scan"
         )
         self._scan_button = button(suggested=True)
         self._scan_button.set_child(self._scan_content)
@@ -57,13 +57,13 @@ class HomePage(BasePage):
         self._flow = self._build_cards()
         self._result_slot = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
         self._recommend_group = Adw.PreferencesGroup(
-            title="Rekomendasi",
-            description="Tindakan yang paling relevan dengan kondisi saat ini.",
+            title="Recommendations",
+            description="Actions most relevant to the current condition.",
         )
         self._recommend_group.add(
             Adw.ActionRow(
-                title="Belum ada data",
-                subtitle="Pindai sistem untuk mendapatkan rekomendasi.",
+                title="No data yet",
+                subtitle="Scan the system to get recommendations.",
             )
         )
         self.body.append(self._recommend_group)
@@ -79,7 +79,7 @@ class HomePage(BasePage):
         hero.set_halign(Gtk.Align.CENTER)
         ring = HealthRing()
         hero.append(ring)
-        self._summary = label("Menyiapkan data sistem…", xalign=0.5, css="uc-subtle")
+        self._summary = label("Preparing system data…", xalign=0.5, css="uc-subtle")
         self._summary.set_halign(Gtk.Align.CENTER)
         hero.append(self._summary)
         self._deduction_label = label("", xalign=0.5, css="uc-subtle", wrap=True)
@@ -117,7 +117,7 @@ class HomePage(BasePage):
         flow.append(self._metric_card("disk", "Disk", "drive-harddisk-symbolic", "—"))
         flow.append(self._metric_card("ram", "RAM", "drive-harddisk-solidstate-symbolic", "—"))
         flow.append(self._metric_card("cpu", "CPU", "preferences-system-symbolic", "—"))
-        flow.append(self._metric_card("trash", "Sampah", "user-trash-symbolic", "—"))
+        flow.append(self._metric_card("trash", "Trash", "user-trash-symbolic", "—"))
         self.body.append(flow)
         try:
             condition = Adw.BreakpointCondition.parse("max-width: 620sp")
@@ -133,13 +133,13 @@ class HomePage(BasePage):
 
     # ------------------------------------------------------------------
     def on_shown(self) -> None:
-        """Muat metrik dan mulai pembaruan ringan."""
+        """Load metrics and start the light refresh."""
         self._refresh_live()
         if not self._timer_id:
             self._timer_id = GLib.timeout_add_seconds(15, self._auto_refresh)
 
     def on_hidden(self) -> None:
-        """Hentikan pembaruan saat halaman tidak terlihat."""
+        """Stop refreshing while the page is not visible."""
         if self._timer_id:
             GLib.source_remove(self._timer_id)
             self._timer_id = 0
@@ -180,19 +180,19 @@ class HomePage(BasePage):
 
         def failed(exc: Exception) -> None:
             self._busy = False
-            self.window.toast(f"Gagal membaca metrik: {exc}")
+            self.window.toast(f"Failed to read metrics: {exc}")
 
         run_async(collect, done, failed)
 
     def scan(self) -> None:
-        """Pindai kategori aman dan perbarui skor serta rekomendasi."""
+        """Scan safe categories and update the score and recommendations."""
         if self._busy:
             return
         self._busy = True
         self._scan_button.set_sensitive(False)
-        self._scan_content.set_label("Memindai…")
+        self._scan_content.set_label("Scanning…")
         self._scan_content.set_icon_name("view-refresh-symbolic")
-        self._summary.set_text("Memindai kategori pembersihan…")
+        self._summary.set_text("Scanning cleanup categories…")
 
         def collect() -> Any:
             snapshot = self.services.monitor.sample()
@@ -205,7 +205,7 @@ class HomePage(BasePage):
             self._startup_count = startup_count
             self._busy = False
             self._scan_button.set_sensitive(True)
-            self._scan_content.set_label("Pindai")
+            self._scan_content.set_label("Scan")
             self._scan_content.set_icon_name("system-search-symbolic")
             self.services.last_previews = previews
             self._previews = previews
@@ -214,15 +214,15 @@ class HomePage(BasePage):
             self._apply_health(health)
             self._show_result(previews)
             total = self._cleanable_total(previews)
-            self.window.toast(f"Pemindaian selesai · {format_bytes(total)} bisa dibebaskan")
+            self.window.toast(f"Scan complete · {format_bytes(total)} can be freed")
 
         def failed(exc: Exception) -> None:
             self._busy = False
             self._scan_button.set_sensitive(True)
-            self._scan_content.set_label("Pindai")
+            self._scan_content.set_label("Scan")
             self._scan_content.set_icon_name("system-search-symbolic")
-            self._summary.set_text("Pemindaian gagal.")
-            self.window.toast(f"Pemindaian gagal: {exc}")
+            self._summary.set_text("Scan failed.")
+            self.window.toast(f"Scan failed: {exc}")
 
         run_async(collect, done, failed)
 
@@ -278,7 +278,7 @@ class HomePage(BasePage):
         trash = self._cards["trash"]
         trash["value"].set_text(format_bytes(total))
         trash["subtitle"].set_text(
-            f"{format_count(items)} item dari {len(previews)} kategori" if previews else "Belum dipindai"
+            f"{format_count(items)} item from {len(previews)} categories" if previews else "Not scanned yet"
         )
         set_progress(trash["bar"], min(1.0, total / (5 * 1024**3)))
         self._summary.set_text(
@@ -292,21 +292,21 @@ class HomePage(BasePage):
         deductions = health.deductions()[:3]
         if deductions:
             self._deduction_label.set_text(
-                "Yang menurunkan skor: "
+                "Score deductions: "
                 + " · ".join(
                     f"{factor.label} −{factor.lost:.0f}" for factor in deductions
                 )
             )
         else:
-            self._deduction_label.set_text("Semua metrik dalam batas sehat.")
+            self._deduction_label.set_text("All metrics within healthy range.")
         self._render_recommendations(health)
 
     def _render_recommendations(self, health: HealthReport) -> None:
         clear_group(self._recommend_group)
         if not health.recommendations:
             row = action_row(
-                "Sistem terlihat sehat",
-                "Tidak ada tindakan mendesak. Pemindaian berkala tetap disarankan.",
+                "System looks healthy",
+                "No urgent action needed. Regular scans are still recommended.",
             )
             row.add_prefix(icon("object-select-symbolic", 16, css="uc-success-text"))
             self._recommend_group.add(row)
@@ -327,7 +327,7 @@ class HomePage(BasePage):
             "info": "dialog-information-symbolic",
         }.get(recommendation.severity, "dialog-information-symbolic")
         row.add_prefix(icon(icon_name, 16, css=css))
-        button_widget = button("Buka", css=("flat",))
+        button_widget = button("Open", css=("flat",))
         button_widget.set_valign(Gtk.Align.CENTER)
         button_widget.connect("clicked", lambda *_: self.window.show_page("clean"))
         row.add_suffix(button_widget)
@@ -362,20 +362,20 @@ class HomePage(BasePage):
         self._result_number = AnimatedNumber(heading, heading, formatter=lambda value: format_bytes(value))
         self._result_number.set_value(total)
         text.append(heading)
-        subtitle = f"{format_count(items)} item · {len(cleanable)} kategori siap dibersihkan"
+        subtitle = f"{format_count(items)} item · {len(cleanable)} categories ready to clean"
         if all_total > total:
-            subtitle += f" · {format_bytes(all_total - total)} opsi lain (risiko/developer)"
+            subtitle += f" · {format_bytes(all_total - total)} other options (risky/developer)"
         text.append(label(subtitle, css="uc-subtle", wrap=True))
         top.append(text)
         result.append(top)
         actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         actions.set_halign(Gtk.Align.END)
-        details = button("Lihat detail")
+        details = button("View details")
         details.connect("clicked", lambda *_: self.window.show_page("clean"))
-        clean = button("Bersihkan", icon_name="edit-delete-symbolic", suggested=True)
+        clean = button("Clean", icon_name="edit-delete-symbolic", suggested=True)
         clean.connect("clicked", lambda *_: self.window.show_page("clean"))
         actions.append(details)
         actions.append(clean)
         result.append(actions)
         self._result_slot.append(result)
-        set_accessible(result, f"{format_bytes(total)} siap dibersihkan")
+        set_accessible(result, f"{format_bytes(total)} ready to clean")
