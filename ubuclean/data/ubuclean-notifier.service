@@ -1,0 +1,11 @@
+[Unit]
+Description=Pemantau notifikasi UbuClean
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/ubuclean --watch
+Restart=on-failure
+RestartSec=30
+
+[Install]
+WantedBy=default.target

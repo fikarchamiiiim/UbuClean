@@ -1,0 +1,212 @@
+/* UbuClean — tema kartu minimalis memakai named colors libadwaita.
+   Semua warna mengikuti tema terang/gelap sistem. */
+
+.uc-card {
+  background-color: @card_bg_color;
+  border: 1px solid alpha(@borders, 0.55);
+  border-radius: 16px;
+  padding: 18px;
+  box-shadow: 0 1px 2px alpha(@shade_color, 0.12);
+}
+
+.uc-card-quiet {
+  background-color: alpha(@card_bg_color, 0.55);
+  border: 1px solid alpha(@borders, 0.35);
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.uc-hero {
+  padding: 8px 12px 16px 12px;
+}
+
+.uc-metric {
+  font-size: 26px;
+  font-weight: 800;
+}
+
+.uc-metric-compact {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.uc-label {
+  font-size: 0.82em;
+  font-weight: 700;
+  color: alpha(@view_fg_color, 0.62);
+}
+
+.uc-subtle {
+  font-size: 0.9em;
+  color: alpha(@view_fg_color, 0.60);
+}
+
+.uc-section {
+  font-size: 1.05em;
+  font-weight: 800;
+}
+
+.uc-ring-value {
+  font-size: 40px;
+  font-weight: 800;
+}
+
+.uc-ring-label {
+  font-size: 0.82em;
+  font-weight: 700;
+  color: alpha(@view_fg_color, 0.62);
+}
+
+.uc-ring-verdict {
+  font-size: 0.95em;
+  font-weight: 700;
+}
+
+.uc-pill {
+  background-color: alpha(@accent_bg_color, 0.16);
+  color: @accent_color;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 0.85em;
+  font-weight: 700;
+}
+
+.uc-pill-warning {
+  background-color: alpha(@warning_color, 0.16);
+  color: @warning_color;
+}
+
+.uc-pill-critical {
+  background-color: alpha(@error_color, 0.16);
+  color: @error_color;
+}
+
+.uc-total {
+  font-size: 32px;
+  font-weight: 800;
+}
+
+.uc-result {
+  background-color: alpha(@accent_bg_color, 0.10);
+  border: 1px solid alpha(@accent_bg_color, 0.25);
+  border-radius: 16px;
+  padding: 20px;
+}
+
+.uc-info {
+  background-color: alpha(@accent_bg_color, 0.08);
+  border: 1px solid alpha(@accent_bg_color, 0.18);
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+
+.uc-warning-text {
+  color: @warning_color;
+}
+
+.uc-critical-text {
+  color: @error_color;
+}
+
+.uc-success-text {
+  color: @success_color;
+}
+
+.uc-progress {
+  min-height: 6px;
+}
+
+.uc-progress trough {
+  min-height: 6px;
+  border-radius: 999px;
+  background-color: alpha(@view_fg_color, 0.08);
+}
+
+.uc-progress progress {
+  min-height: 6px;
+  border-radius: 999px;
+  background-color: @accent_bg_color;
+}
+
+.uc-progress.success progress {
+  background-color: @success_color;
+}
+
+.uc-progress.warning progress {
+  background-color: @warning_color;
+}
+
+.uc-progress.error progress {
+  background-color: @error_color;
+}
+
+.uc-nav-row {
+  border-radius: 10px;
+  padding: 9px 10px;
+  margin: 1px 6px;
+}
+
+.uc-nav-icon {
+  color: alpha(@view_fg_color, 0.75);
+}
+
+.uc-sidebar {
+  background-color: @sidebar_bg_color;
+}
+
+.uc-chart {
+  border-radius: 12px;
+}
+
+.uc-core-group {
+  padding: 4px 0;
+}
+
+.uc-core-name {
+  font-size: 0.78em;
+  color: alpha(@view_fg_color, 0.58);
+}
+
+.uc-divider {
+  min-height: 1px;
+  background-color: alpha(@borders, 0.55);
+}
+
+.uc-key {
+  font-family: monospace;
+  font-size: 0.85em;
+  background-color: alpha(@view_fg_color, 0.08);
+  border-radius: 6px;
+  padding: 2px 8px;
+}
+
+.uc-danger-text {
+  color: @error_color;
+  font-weight: 700;
+}
+
+.uc-suggested {
+  font-weight: 700;
+}
+
+.uc-dot {
+  min-width: 8px;
+  min-height: 8px;
+  border-radius: 999px;
+  background-color: @accent_bg_color;
+}
+
+.uc-dot-success { background-color: @success_color; }
+.uc-dot-warning { background-color: @warning_color; }
+.uc-dot-error { background-color: @error_color; }
+
+.uc-bottom-bar {
+  background-color: @headerbar_bg_color;
+  border: 1px solid alpha(@borders, 0.55);
+  border-radius: 14px;
+  box-shadow: 0 1px 3px alpha(@shade_color, 0.12);
+}
+
+.uc-bottom-bar switch {
+  margin: 0;
+}

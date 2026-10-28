@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="bg" x1="18" y1="12" x2="110" y2="118" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2ec27e"/>
+      <stop offset="1" stop-color="#1c71d8"/>
+    </linearGradient>
+    <linearGradient id="leaf" x1="48" y1="30" x2="84" y2="100" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#e6f7ef"/>
+    </linearGradient>
+  </defs>
+  <rect x="6" y="6" width="116" height="116" rx="28" fill="url(#bg)"/>
+  <path d="M64 26c-17 12-25 28-21 44 4 16 20 26 37 20 5-19-1-43-16-64Z" fill="url(#leaf)"/>
+  <path d="M64 44v44" stroke="#2ec27e" stroke-width="3.2" stroke-linecap="round" opacity="0.75"/>
+  <path d="M64 62l-10-8M64 74l11-9M64 56l9-7" stroke="#2ec27e" stroke-width="2.6" stroke-linecap="round" opacity="0.6"/>
+  <path d="M30 34l2.4 6.2L39 43l-6.6 2.8L30 52l-2.4-6.2L21 43l6.6-2.8L30 34Z" fill="#ffffff" opacity="0.9"/>
+  <path d="M98 76l1.7 4.4 4.3 1.7-4.3 1.7L98 88l-1.7-4.2-4.3-1.7 4.3-1.7L98 76Z" fill="#ffffff" opacity="0.7"/>
+</svg>

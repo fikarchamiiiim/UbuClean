@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC
+ "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<policyconfig>
+  <vendor>UbuClean</vendor>
+  <vendor_url>https://github.com/ubuclean/ubuclean</vendor_url>
+  <icon_name>com.ubuclean.App</icon_name>
+
+  <action id="com.ubuclean.helper.run">
+    <description>Menjalankan tindakan perawatan sistem UbuClean</description>
+    <message>Autentikasi diperlukan untuk membersihkan cache sistem, log, atau paket.</message>
+    <defaults>
+      <allow_any>no</allow_any>
+      <allow_inactive>no</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/lib/ubuclean/bin/ubuclean-helper</annotate>
+    <annotate key="org.freedesktop.policykit.exec.allow_gui">true</annotate>
+  </action>
+</policyconfig>

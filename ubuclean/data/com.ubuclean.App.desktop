@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=UbuClean
+GenericName=Pembersih Sistem
+Comment=Bersihkan sampah sistem, kosongkan cache RAM, dan rawat Ubuntu Desktop
+Exec=ubuclean
+Icon=com.ubuclean.App
+Terminal=false
+Categories=System;
+Keywords=clean;cleaner;cache;ram;memory;disk;monitor;startup;ubuntu;
+StartupNotify=true
